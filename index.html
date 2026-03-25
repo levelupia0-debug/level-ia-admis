@@ -620,7 +620,7 @@
                 <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
                 <h2 class="text-2xl font-bold uppercase tracking-widest text-yellow-400 glow-text">Les Archives</h2>
             </div>
-            <button onclick="loadLogs(this)" class="text-xs font-mono text-yellow-500 border border-yellow-500/30 px-3 py-1.5 rounded hover:bg-yellow-500 hover:text-black transition-all flex items-center gap-2">
+            <button onclick="window.loadLogs(this)" class="text-xs font-mono text-yellow-500 border border-yellow-500/30 px-3 py-1.5 rounded hover:bg-yellow-500 hover:text-black transition-all flex items-center gap-2">
                 <i class="fas fa-sync-alt refresh-icon"></i> <span class="refresh-text">[ MAJ LOGS ]</span>
             </button>
         </header>
@@ -1282,7 +1282,7 @@
                 document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
                 const a = document.getElementById(appId);
                 if(a) a.classList.remove('hidden');
-                if (appId === 'app-archives') loadLogs();
+                if (appId === 'app-archives') window.loadLogs();
             };
 
             window.backToHub = () => {

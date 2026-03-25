@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEVEL IA - OS</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, collection, query, onSnapshot, doc, getDocs, setDoc, getDoc, collectionGroup, updateDoc, deleteDoc, addDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3JgvNu5p-43037jvm4WRDaJHI9ES7uGM",
+            authDomain: "levelup-ia.firebaseapp.com",
+            projectId: "levelup-ia",
+            storageBucket: "levelup-ia.firebasestorage.app",
+            messagingSenderId: "229420004282",
+            appId: "1:229420004282:web:6735f059a947f0936ae383",
+            measurementId: "G-MSRDY2574K"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        window.firebaseTools = { auth, db, signInAnonymously, collection, query, onSnapshot, doc, getDocs, setDoc, getDoc, collectionGroup, updateDoc, deleteDoc, addDoc, orderBy, limit };
+        window.__app_id = "level-ia-premium"; 
+    </script>
+
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #020202; 
+            color: #e2e8f0; 
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(30, 0, 50, 0.15) 0%, transparent 50%),
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
+        }
+        h1, h2, h3, .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .glass-dark { background: rgba(5, 5, 5, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass-card { background: rgba(15, 15, 20, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .glass-card:hover { transform: scale(1.02); background: rgba(25, 25, 30, 0.8); border-color: rgba(168, 85, 247, 0.4); box-shadow: 0 10px 40px -10px rgba(168, 85, 247, 0.2); cursor: pointer; }
+        
+        .glow-text { text-shadow: 0 0 15px currentColor; }
+        
+        /* INVISIBLE SCROLLBAR BUT FULLY FUNCTIONAL */
+        .custom-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+        .custom-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+        
+        .star-logo { animation: rotate360 8s linear infinite; }
+        @keyframes rotate360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
+        .scanline-effect::after { content: ""; position: fixed; inset: 0; background: linear-gradient(to bottom, transparent, rgba(168,85,247,0.1), transparent); height: 100px; animation: scanline 4s linear infinite; pointer-events: none; z-index: 9998; }
+
+        .svg-icon-btn { transition: all 0.2s; }
+        .svg-icon-btn.selected { border-color: #f97316 !important; background: rgba(249, 115, 22, 0.2) !important; transform: scale(1.1); }
+        .geo-panel { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s; }
+        
+        .log-petit { border-left-color: #3b82f6; }
+        .log-moyen { border-left-color: #eab308; }
+        .log-grand { border-left-color: #ef4444; }
+    </style>
+</head>
+<body class="h-[100dvh] flex flex-col overflow-hidden selection:bg-purple-500/30 scanline-effect min-h-0">
+
+    <!-- TOAST SYSTEM -->
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 transform -translate-y-[150%] transition-transform duration-300 z-[9999] glass-dark border-b-2 text-white px-8 py-3 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.8)] flex items-center gap-3">
+        <i class="fas fa-terminal" id="toast-icon"></i>
+        <span id="toast-msg" class="text-xs font-mono font-bold tracking-widest uppercase">System Msg</span>
+    </div>
+
+    <!-- LOGOUT CONFIRM MODAL -->
+    <div id="logoutModal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-dark border border-white/10 rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center transform transition-all scale-95 opacity-0" id="logoutModalContent">
+            <i class="fas fa-power-off text-5xl text-red-500 mb-6 glow-text"></i>
+            <h3 class="text-xl font-bold text-white uppercase tracking-widest mb-2">Déconnexion</h3>
+            <p class="text-xs text-slate-400 font-mono mb-8">Voulez-vous vraiment quitter le Système ?</p>
+            <div class="flex gap-4">
+                <button onclick="closeLogoutModal()" class="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all">Annuler</button>
+                <button id="confirmLogoutBtn" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL LISTE UTILISATEURS (STATS) -->
+    <div id="statListModal" class="fixed inset-0 z-[9000] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-dark border border-purple-500/30 rounded-3xl w-full max-w-2xl p-6 md:p-8 shadow-[0_0_50px_rgba(168,85,247,0.15)] relative transform transition-all scale-95 opacity-0 flex flex-col max-h-[80vh]" id="statListModalContent">
+            <button onclick="closeStatListModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors text-xl"><i class="fas fa-times"></i></button>
+            <h3 id="statListTitle" class="text-xl font-bold text-white uppercase tracking-widest mb-2 glow-text">LISTE</h3>
+            <p id="statListCount" class="text-xs text-purple-400 font-mono mb-6 uppercase">0 Résultat(s)</p>
+            <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 min-h-0" id="statListContainer">
+                <!-- JS Populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL UTILISATEUR (DOSSIER CIBLE) -->
+    <div id="userModal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-dark border border-red-500/30 rounded-3xl w-full max-w-lg p-6 md:p-8 shadow-[0_0_50px_rgba(239,68,68,0.15)] relative transform transition-all scale-95 opacity-0" id="userModalContent">
+            <button onclick="closeUserModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors text-xl"><i class="fas fa-times"></i></button>
+            <div class="flex items-center gap-4 mb-6 pb-6 border-b border-white/5">
+                <div id="modalUserAvatar" class="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center text-xl shadow-inner">👤</div>
+                <div class="min-w-0">
+                    <h3 id="modalUserName" class="text-xl font-bold text-white uppercase tracking-widest truncate">CIBLE</h3>
+                    <p id="modalUserEmail" class="text-xs text-slate-400 font-mono mt-1 truncate">email@test.com</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-black/50 border border-white/5 p-4 rounded-xl overflow-hidden">
+                    <p class="text-[9px] text-slate-500 font-mono uppercase tracking-widest mb-1">Localisation</p>
+                    <p id="modalUserLocation" class="text-sm font-bold text-white truncate">🌍 Inconnu</p>
+                </div>
+                <div class="bg-black/50 border border-white/5 p-4 rounded-xl overflow-hidden">
+                    <p class="text-[9px] text-slate-500 font-mono uppercase tracking-widest mb-1">Clé d'Accès</p>
+                    <p id="modalUserKey" class="text-sm font-bold text-purple-400 font-mono truncate">LVL-XXXXX</p>
+                </div>
+            </div>
+            <div class="bg-black/50 border border-white/5 p-4 rounded-xl mb-8 text-center flex flex-col items-center justify-center">
+                <p class="text-[9px] text-slate-500 font-mono uppercase tracking-widest mb-2">Environnement d'exécution</p>
+                <div id="modalUserPlatform" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest border">
+                    <!-- JS -->
+                </div>
+            </div>
+            <button id="modalBanBtn" class="w-full py-4 rounded-xl font-bold font-mono text-[12px] tracking-widest uppercase transition-all bg-red-600/20 text-red-400 border border-red-500 hover:bg-red-600 hover:text-white shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                [ BANNIR LE COMPTE ]
+            </button>
+        </div>
+    </div>
+
+    <!-- LOGIN SCREEN PRO (2 ETAPES) -->
+    <div id="loginScreen" class="absolute inset-0 z-50 flex items-center justify-center p-4 bg-[#020202]">
+        <div class="glass-dark p-10 md:p-12 rounded-3xl w-full max-w-md relative overflow-hidden border-t border-purple-500/50 shadow-[0_0_50px_rgba(168,85,247,0.15)] flex flex-col items-center">
+            <i class="fas fa-star text-6xl text-purple-500 mb-6 star-logo glow-text"></i>
+            <h1 class="text-3xl font-extrabold text-white tracking-[0.3em] uppercase glow-text mb-10">LEVEL IA</h1>
+
+            <!-- ETAPE 1 : CLÉ -->
+            <div id="loginStep1" class="w-full space-y-4">
+                <input type="password" id="adminKeyInput" maxlength="15" placeholder="LVL-XXXXX-XXXXX" class="w-full bg-black/80 border border-slate-800 rounded-xl px-4 py-4 text-purple-300 font-mono text-center tracking-[0.3em] text-sm focus:outline-none focus:border-purple-500 transition-all uppercase">
+                <button id="nextStepBtn" class="w-full bg-white text-black hover:bg-purple-500 hover:text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 mt-4">
+                    SUIVANT <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- ETAPE 2 : PIN -->
+            <div id="loginStep2" class="w-full space-y-4 hidden">
+                <p class="text-xs text-slate-400 font-mono text-center mb-2">IDENTIFICATION REQUISE</p>
+                <input type="password" id="adminPinInput" placeholder="CODE PIN" maxlength="4" class="w-full bg-black/80 border border-slate-800 rounded-xl px-4 py-4 text-emerald-300 font-mono text-center tracking-[0.5em] text-2xl focus:outline-none focus:border-emerald-500 transition-all">
+                <button id="loginBtn" class="w-full bg-emerald-500 text-black hover:bg-emerald-400 font-black py-4 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 mt-4">
+                    <i class="fas fa-lock-open"></i> DÉVERROUILLER
+                </button>
+            </div>
+
+            <p id="loginError" class="text-red-500 text-[10px] text-center hidden font-mono uppercase font-bold mt-6 w-full p-2 bg-red-500/10 rounded"></p>
+        </div>
+    </div>
+
+    <!-- THE HUB (GRID) -->
+    <div id="hubScreen" class="hidden flex-1 flex-col p-6 md:p-12 pb-24 relative overflow-y-auto custom-scrollbar min-h-0">
+        <header class="flex justify-between items-center mb-12 shrink-0">
+            <div>
+                <h2 class="text-3xl md:text-5xl font-extrabold text-white tracking-widest uppercase glow-text">LEVEL IA</h2>
+                <p class="text-xs text-slate-500 font-mono mt-2 tracking-widest uppercase"><i class="fas fa-circle text-green-500 text-[8px] animate-pulse mr-1"></i> Connexion stable • <span id="adminNameDisplay">System</span></p>
+            </div>
+            <button onclick="openLogoutModal()" class="text-red-500/50 hover:text-red-500 border border-red-500/20 hover:border-red-500 bg-red-500/5 px-4 py-2 rounded-lg text-[10px] font-mono font-bold uppercase transition-all">
+                [ EXIT ]
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 flex-1 content-start min-h-0">
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-omniscience')">
+                <div class="flex justify-between items-start mb-10">
+                    <i class="fas fa-eye text-4xl text-purple-400 group-hover:glow-text transition-all"></i>
+                    <span class="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-1 rounded font-mono border border-purple-500/30">MODULE 01</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-white uppercase tracking-wider mb-2">Omniscience</h3>
+                    <p class="text-xs text-slate-400 font-mono">Radar des activités. Statistiques en temps réel et liste détaillée.</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-jugement')">
+                <div class="flex justify-between items-start mb-10">
+                    <i class="fas fa-skull text-4xl text-red-500 group-hover:glow-text transition-all"></i>
+                    <span class="text-[9px] bg-red-500/20 text-red-300 px-2 py-1 rounded font-mono border border-red-500/30">MODULE 02</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-white uppercase tracking-wider mb-2">Le Jugement</h3>
+                    <p class="text-xs text-slate-400 font-mono">Matrice des utilisateurs. Profils complets et suspension de compte.</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-blocus')">
+                <div class="flex justify-between items-start mb-10">
+                    <i class="fas fa-globe-crosshairs text-4xl text-orange-500 group-hover:glow-text transition-all"></i>
+                    <span class="text-[9px] bg-orange-500/20 text-orange-300 px-2 py-1 rounded font-mono border border-orange-500/30">MODULE 03</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-white uppercase tracking-wider mb-2">Blocus Global</h3>
+                    <p class="text-xs text-slate-400 font-mono">Contrôle géopolitique total. Base de 160 pays, gestion continentale.</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-omnipresence')">
+                <div class="flex justify-between items-start mb-10">
+                    <i class="fas fa-broadcast-tower text-4xl text-blue-400 group-hover:glow-text transition-all"></i>
+                    <span class="text-[9px] bg-blue-500/20 text-blue-300 px-2 py-1 rounded font-mono border border-blue-500/30">MODULE 04</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-white uppercase tracking-wider mb-2">Omniprésence</h3>
+                    <p class="text-xs text-slate-400 font-mono">Transmission push. Sélection multiple ou globale précise.</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-noyau')">
+                <div class="flex justify-between items-start mb-10">
+                    <i class="fas fa-microchip text-4xl text-emerald-400 group-hover:glow-text transition-all"></i>
+                    <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded font-mono border border-emerald-500/30">MODULE 05</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-white uppercase tracking-wider mb-2">Cœur du Système</h3>
+                    <p class="text-xs text-slate-400 font-mono">Variables d'environnement et clés API.</p>
+                </div>
+            </div>
+            
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-archives')">
+                <div class="flex justify-between items-start mb-10">
+                    <i class="fas fa-list-alt text-4xl text-yellow-400 group-hover:glow-text transition-all"></i>
+                    <span class="text-[9px] bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded font-mono border border-yellow-500/30">MODULE 06</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-white uppercase tracking-wider mb-2">Les Archives</h3>
+                    <p class="text-xs text-slate-400 font-mono">Registre complet. Logs utilisateurs (Petits, Moyens, Grands).</p>
+                </div>
+            </div>
+
+            <!-- NOUVEAU MODULE : L'ORACLE -->
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-oracle')">
+                <div class="flex justify-between items-start mb-10">
+                    <i class="fas fa-brain text-4xl text-fuchsia-500 group-hover:glow-text transition-all"></i>
+                    <span class="text-[9px] bg-fuchsia-500/20 text-fuchsia-300 px-2 py-1 rounded font-mono border border-fuchsia-500/30">MODULE 07</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-white uppercase tracking-wider mb-2">L'Oracle</h3>
+                    <p class="text-xs text-slate-400 font-mono">Directive Suprême. Le prompt maître qui contrôle toute l'IA.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- INTERFACES DÉDIÉES (APPS)                  -->
+    <!-- ========================================== -->
+
+    <!-- 1. OMNISCIENCE -->
+    <div id="app-omniscience" class="app-screen hidden flex-1 flex flex-col bg-[#050010] relative z-40 min-h-0">
+        <header class="p-6 border-b border-purple-500/20 flex items-center justify-between glass-dark shrink-0">
+            <div class="flex items-center gap-6">
+                <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="text-2xl font-bold uppercase tracking-widest text-purple-400 glow-text">Omniscience</h2>
+            </div>
+            <button onclick="loadData(this)" class="text-xs font-mono text-purple-500 border border-purple-500/30 px-3 py-1.5 rounded hover:bg-purple-500 hover:text-white transition-all flex items-center gap-2">
+                <i class="fas fa-sync-alt refresh-icon"></i> <span class="refresh-text">[ RAFRAÎCHIR ]</span>
+            </button>
+        </header>
+        <div class="flex-1 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar min-h-0">
+            <p class="text-[10px] text-purple-500/50 font-mono mb-4 text-center uppercase">Cliquez sur une carte pour explorer les données</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 max-w-6xl mx-auto mt-2">
+                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-purple-500/50 transition-all" onclick="openStatList('all')">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-purple-500"></div>
+                    <p class="text-[10px] md:text-xs text-slate-500 font-mono uppercase tracking-widest mb-4">Total Utilisateurs</p>
+                    <p class="text-4xl md:text-6xl font-black text-white glow-text" id="statTotalUsers">0</p>
+                </div>
+                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-green-500/50 transition-all" onclick="openStatList('online')">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-green-500"></div>
+                    <p class="text-[10px] md:text-xs text-slate-500 font-mono uppercase tracking-widest mb-4">En Ligne (Actifs)</p>
+                    <p class="text-4xl md:text-6xl font-black text-green-400 glow-text" id="statOnlineUsers">0</p>
+                </div>
+                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-blue-500/50 transition-all" onclick="openStatList('installed')">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+                    <p class="text-[10px] md:text-xs text-slate-500 font-mono uppercase tracking-widest mb-4">Installations (PWA)</p>
+                    <p class="text-4xl md:text-6xl font-black text-blue-400 glow-text" id="statInstalledUsers">0</p>
+                </div>
+                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-slate-500/50 transition-all" onclick="openStatList('keys')">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-slate-500"></div>
+                    <p class="text-[10px] md:text-xs text-slate-500 font-mono uppercase tracking-widest mb-4">Clés Générées</p>
+                    <p class="text-4xl md:text-6xl font-black text-slate-400 glow-text" id="statTotalKeys">0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. JUGEMENT -->
+    <div id="app-jugement" class="app-screen hidden flex-1 flex flex-col bg-[#100000] relative z-40 min-h-0">
+        <header class="p-4 md:p-6 border-b border-red-500/20 flex items-center justify-between glass-dark shrink-0">
+            <div class="flex items-center gap-4 md:gap-6">
+                <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="text-xl md:text-2xl font-bold uppercase tracking-widest text-red-500 glow-text">Le Jugement</h2>
+            </div>
+            <div class="w-1/2 md:w-1/3 relative flex items-center gap-2">
+                <button onclick="loadData(this)" class="text-red-500 hover:text-white transition-all p-2 rounded-full"><i class="fas fa-sync-alt refresh-icon"></i></button>
+                <div class="relative w-full">
+                    <input type="text" id="userSearchInput" placeholder="TRAQUER CIBLE..." class="w-full bg-red-950/20 border border-red-500/30 rounded-full px-4 md:px-6 py-2 text-white font-mono text-[10px] md:text-xs focus:outline-none focus:border-red-500 uppercase tracking-widest placeholder-red-500/30">
+                </div>
+            </div>
+        </header>
+        <div class="flex-1 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar min-h-0">
+            <p class="text-[10px] text-red-500/50 font-mono mb-4 text-center uppercase">Cliquez sur une carte pour ouvrir le dossier cible</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6" id="usersGrid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. BLOCUS GLOBAL -->
+    <div id="app-blocus" class="app-screen hidden flex-1 flex flex-col bg-[#100500] relative z-40 min-h-0">
+        <header class="p-4 md:p-6 border-b border-orange-500/20 flex items-center gap-4 md:gap-6 glass-dark shrink-0">
+            <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+            <h2 class="text-xl md:text-2xl font-bold uppercase tracking-widest text-orange-500 glow-text" id="blocusTitle">Blocus Global</h2>
+        </header>
+        
+        <div class="flex-1 overflow-y-auto custom-scrollbar min-h-0 relative">
+            
+            <!-- ETAPE 1 : CONTINENTS -->
+            <div id="blocus-step-1" class="geo-panel absolute inset-0 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-6xl mx-auto mt-4">
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Afrique')">
+                        <i class="fas fa-earth-africa text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
+                        <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Afrique</h3>
+                    </div>
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Amérique')">
+                        <i class="fas fa-earth-americas text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
+                        <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Amérique</h3>
+                    </div>
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Asie')">
+                        <i class="fas fa-earth-asia text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
+                        <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Asie</h3>
+                    </div>
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Moyen-Orient')">
+                        <i class="fas fa-mosque text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
+                        <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Moyen-Orient</h3>
+                    </div>
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Europe')">
+                        <i class="fas fa-earth-europe text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
+                        <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Europe</h3>
+                    </div>
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Océanie')">
+                        <i class="fas fa-earth-oceania text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
+                        <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Océanie</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ETAPE 2 : PAYS -->
+            <div id="blocus-step-2" class="geo-panel absolute inset-0 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar transform translate-x-full opacity-0 pointer-events-none">
+                
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 max-w-7xl mx-auto">
+                    <button onclick="backToStep1()" class="bg-white/5 border border-white/10 text-white px-4 py-2 rounded-xl font-mono text-xs hover:bg-white/10 transition-all"><i class="fas fa-undo mr-2"></i> CONTINENTS</button>
+                    
+                    <div class="flex-1 max-w-md w-full">
+                        <input type="text" id="countrySearchInput" placeholder="Rechercher un pays..." class="w-full bg-black/50 border border-orange-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 font-mono">
+                    </div>
+
+                    <div class="flex items-center gap-3 bg-black/40 border border-red-500/30 px-4 py-2.5 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.1)] w-full md:w-auto justify-between md:justify-start">
+                        <span id="continentToggleLabel" class="text-slate-400 font-mono text-[10px] font-bold uppercase tracking-widest">FERMER CONTINENT</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="continentBanToggle" class="sr-only peer">
+                            <div class="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-w-7xl mx-auto" id="countriesGrid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- ETAPE 3 : CONFIG PAYS -->
+            <div id="blocus-step-3" class="geo-panel absolute inset-0 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar transform translate-x-full opacity-0 pointer-events-none">
+                <div class="max-w-4xl mx-auto">
+                    <button onclick="backToStep2()" class="bg-white/5 border border-white/10 text-white px-4 py-2 rounded-xl mb-6 font-mono text-xs hover:bg-white/10 transition-all"><i class="fas fa-undo mr-2"></i> RETOUR PAYS</button>
+                    
+                    <div class="bg-black/60 border border-orange-500/30 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-600 to-red-600"></div>
+                        
+                        <div class="flex items-center gap-4 mb-8 border-b border-white/5 pb-6">
+                            <span id="configCountryEmoji" class="text-5xl">🏳️</span>
+                            <div>
+                                <h3 id="configCountryName" class="text-3xl font-extrabold text-white uppercase tracking-widest">PAYS</h3>
+                                <p class="text-[10px] text-orange-400 font-mono tracking-widest">PANNEAU DE CONTRÔLE GÉOGRAPHIQUE</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-8">
+                            <div class="flex items-center justify-between bg-red-950/20 border border-red-500/30 p-5 rounded-2xl">
+                                <div>
+                                    <h4 class="font-bold text-red-400 text-lg uppercase tracking-widest">BANNIR TOUT LE PAYS</h4>
+                                    <p class="text-xs text-red-400/50 font-mono mt-1">Coupe l'accès à toute personne provenant de ce pays.</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="countryBanToggle" class="sr-only peer">
+                                    <div class="w-14 h-7 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-red-600"></div>
+                                </label>
+                            </div>
+
+                            <hr class="border-white/5">
+
+                            <div>
+                                <h4 class="font-bold text-white text-sm uppercase tracking-widest mb-4">Verrouillage par Ville (Top 5)</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="configCitiesList">
+                                    <!-- JS -->
+                                </div>
+                            </div>
+
+                            <hr class="border-white/5">
+
+                            <div>
+                                <h4 class="font-bold text-white text-sm uppercase tracking-widest mb-4">Désactivation Fonctionnalités (Censure)</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div class="bg-black/50 border border-white/10 p-4 rounded-xl flex flex-col justify-between">
+                                        <p class="text-xs font-bold text-orange-400 uppercase tracking-widest mb-4"><i class="fas fa-gamepad mr-1"></i> Marco</p>
+                                        <label class="relative inline-flex items-center cursor-pointer self-end">
+                                            <input type="checkbox" class="sr-only peer toggle-feature" data-feat="marco">
+                                            <div class="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
+                                        </label>
+                                    </div>
+                                    <div class="bg-black/50 border border-white/10 p-4 rounded-xl flex flex-col justify-between">
+                                        <p class="text-xs font-bold text-purple-400 uppercase tracking-widest mb-4"><i class="fas fa-star mr-1"></i> Thiab's</p>
+                                        <label class="relative inline-flex items-center cursor-pointer self-end">
+                                            <input type="checkbox" class="sr-only peer toggle-feature" data-feat="thiabs">
+                                            <div class="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500"></div>
+                                        </label>
+                                    </div>
+                                    <div class="bg-black/50 border border-white/10 p-4 rounded-xl flex flex-col justify-between">
+                                        <p class="text-xs font-bold text-pink-400 uppercase tracking-widest mb-4"><i class="fas fa-dove mr-1"></i> Holly</p>
+                                        <label class="relative inline-flex items-center cursor-pointer self-end">
+                                            <input type="checkbox" class="sr-only peer toggle-feature" data-feat="holly">
+                                            <div class="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="border-white/5">
+
+                            <div>
+                                <h4 class="font-bold text-white text-sm uppercase tracking-widest mb-4">Personnalisation du Bannissement</h4>
+                                
+                                <label class="block text-[10px] font-mono text-slate-400 mb-2 uppercase tracking-widest">Nom de l'App (Écran de chargement local)</label>
+                                <input type="text" id="configAppName" placeholder="Ex: Level IA (Service Suspendu)" class="w-full bg-transparent border-b border-white/20 px-2 py-2 text-white text-sm focus:outline-none focus:border-orange-500 font-mono mb-6">
+                                
+                                <label class="block text-[10px] font-mono text-slate-400 mb-2 uppercase tracking-widest">Message de Ban (Raison)</label>
+                                <textarea id="configBanMsg" rows="3" placeholder="Saisir la raison visible par l'utilisateur..." class="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-orange-500 font-mono resize-none custom-scrollbar mb-6"></textarea>
+                                
+                                <label class="block text-[10px] font-mono text-slate-400 mb-2 uppercase tracking-widest">Icône d'accompagnement (SVG)</label>
+                                <div class="grid grid-cols-5 gap-3" id="iconSelector">
+                                    <button class="svg-icon-btn border border-white/10 rounded-xl p-3 flex justify-center text-slate-400 hover:text-orange-400" data-icon="shield">
+                                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                                    </button>
+                                    <button class="svg-icon-btn border border-white/10 rounded-xl p-3 flex justify-center text-slate-400 hover:text-orange-400" data-icon="globe">
+                                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                                    </button>
+                                    <button class="svg-icon-btn border border-white/10 rounded-xl p-3 flex justify-center text-slate-400 hover:text-orange-400" data-icon="gavel">
+                                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M14 7l-3 3 7 7 3-3-7-7zm-1-1l-3-3-3 3 3 3 3-3zm-4 4l-4 4 4 4 4-4-4-4zm-4 4l-2 2 2 2 2-2-2-2z"/></svg>
+                                    </button>
+                                    <button class="svg-icon-btn border border-white/10 rounded-xl p-3 flex justify-center text-slate-400 hover:text-orange-400" data-icon="warning">
+                                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                                    </button>
+                                    <button class="svg-icon-btn border border-white/10 rounded-xl p-3 flex justify-center text-slate-400 hover:text-orange-400" data-icon="ghost">
+                                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8 0-2.97 1.61-5.54 4-6.92V7c0 1.1.9 2 2 2h2c.55 0 1-.45 1-1v-.46c2.2.82 3.84 2.8 3.98 5.25.01.12.02.24.02.37 0 4.41-3.59 8-8 8z"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <button id="saveCountryConfigBtn" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest text-xs mt-6 shadow-[0_0_20px_rgba(249,115,22,0.4)]">
+                                APPLIQUER LA CONFIGURATION
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 4. OMNIPRESENCE -->
+    <div id="app-omnipresence" class="app-screen hidden flex-1 flex flex-col bg-[#000a14] relative z-40 min-h-0">
+        <header class="p-6 border-b border-blue-500/20 flex items-center gap-6 glass-dark shrink-0">
+            <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+            <h2 class="text-2xl font-bold uppercase tracking-widest text-blue-400 glow-text">Omniprésence</h2>
+        </header>
+        <div class="flex-1 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar min-h-0 flex items-start md:items-center justify-center">
+            <div class="w-full max-w-3xl mx-auto bg-black/80 border border-blue-500/30 rounded-3xl p-6 md:p-10 shadow-[0_0_50px_rgba(59,130,246,0.1)] relative mt-4 md:mt-0 flex flex-col max-h-[85vh]">
+                <div class="absolute -top-5 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-[10px] font-mono font-bold tracking-widest">TRANSMISSION PUSH</div>
+                
+                <div class="flex-1 overflow-y-auto custom-scrollbar space-y-6 mt-6 pr-2">
+                    
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-[10px] font-mono text-blue-400 uppercase tracking-widest">> Cibles Sélectionnées</label>
+                            <label class="text-[10px] font-bold text-white cursor-pointer bg-blue-500/20 px-2 py-1 rounded border border-blue-500/30">
+                                <input type="checkbox" id="bcSelectAll" class="mr-1" checked> TOUT LE MONDE
+                            </label>
+                        </div>
+                        <div class="bg-blue-950/10 border border-blue-500/30 rounded-xl h-36 overflow-y-auto custom-scrollbar p-3 grid grid-cols-1 sm:grid-cols-2 gap-2" id="bcTargetList">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-4">
+                        <div class="w-20">
+                            <label class="block text-[10px] font-mono text-blue-400 mb-2 uppercase tracking-widest">> Sigle</label>
+                            <input type="text" id="bcEmoji" value="🚨" maxlength="2" class="w-full bg-transparent border-b-2 border-blue-500/50 px-2 py-3 text-white text-center text-xl focus:outline-none focus:border-blue-400">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-[10px] font-mono text-blue-400 mb-2 uppercase tracking-widest">> En-tête</label>
+                            <input type="text" id="bcTitle" placeholder="TITRE DU MESSAGE..." class="w-full bg-transparent border-b-2 border-blue-500/50 px-2 py-3 text-white text-lg focus:outline-none font-mono uppercase tracking-widest placeholder-slate-600">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-mono text-blue-400 mb-2 uppercase tracking-widest">> Payload (Message)</label>
+                        <textarea id="bcMsg" rows="3" placeholder="Saisir la directive..." class="w-full bg-blue-950/10 border border-blue-500/30 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-blue-400 font-mono resize-none custom-scrollbar placeholder-slate-700"></textarea>
+                    </div>
+
+                    <button id="sendBroadcastBtn" class="w-full bg-blue-600 hover:bg-blue-400 text-white font-black py-4 rounded-xl transition-all uppercase tracking-[0.3em] text-sm shadow-[0_0_20px_rgba(59,130,246,0.5)]">
+                        INITIER LE TRANSFERT
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. NOYAU -->
+    <div id="app-noyau" class="app-screen hidden flex-1 flex flex-col bg-[#001005] relative z-40 min-h-0">
+        <header class="p-6 border-b border-emerald-500/20 flex items-center gap-6 glass-dark shrink-0">
+            <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+            <h2 class="text-2xl font-bold uppercase tracking-widest text-emerald-400 glow-text">Cœur du Système</h2>
+        </header>
+        <div class="flex-1 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar min-h-0">
+            <div class="max-w-4xl mx-auto space-y-6 md:space-y-8 mt-2 md:mt-6">
+                
+                <div class="bg-black/60 border border-emerald-500/30 p-8 rounded-3xl shadow-[0_0_30px_rgba(16,185,129,0.05)]">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-xl font-mono font-bold text-white uppercase tracking-widest">Protocole Maintenance</h3>
+                            <p class="text-[10px] text-emerald-500/70 font-mono mt-1 uppercase">Bloque l'accès aux utilisateurs standards.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="maintenanceToggle" class="sr-only peer">
+                            <div class="w-14 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="bg-black/60 border border-emerald-500/30 p-8 rounded-3xl shadow-[0_0_30px_rgba(16,185,129,0.05)]">
+                    <h3 class="text-xl font-mono font-bold text-white uppercase tracking-widest mb-2">Clés API Gemini (Moteur)</h3>
+                    <p class="text-[10px] text-emerald-500/70 font-mono mb-8 uppercase">Ajoutez les clés IA. Le système effectuera une rotation automatique.</p>
+                    
+                    <div id="apiKeysContainer" class="space-y-4 mb-8"></div>
+                    
+                    <div class="flex gap-4">
+                        <input type="text" id="newApiKeyInput" placeholder="AIzaSy..." class="flex-1 bg-transparent border-b-2 border-emerald-500/50 px-2 py-2 text-lg text-white focus:outline-none focus:border-emerald-500 font-mono">
+                        <button id="addApiKeyBtn" class="bg-emerald-900/50 border border-emerald-500 hover:bg-emerald-600 text-emerald-300 hover:text-white px-6 rounded-xl font-bold uppercase tracking-widest transition-all text-xs">INJECTER</button>
+                    </div>
+                </div>
+
+                <button id="saveConfigBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-black font-black py-5 rounded-2xl transition-all uppercase tracking-[0.3em] text-sm shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+                    SAUVEGARDER L'ÉTAT DU NOYAU
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. ARCHIVES (LOGS DÉDOUBLÉS) -->
+    <div id="app-archives" class="app-screen hidden flex-1 flex flex-col bg-[#111005] relative z-40 min-h-0">
+        <header class="p-6 border-b border-yellow-500/20 flex items-center justify-between glass-dark shrink-0">
+            <div class="flex items-center gap-6">
+                <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="text-2xl font-bold uppercase tracking-widest text-yellow-400 glow-text">Les Archives</h2>
+            </div>
+            <button onclick="loadLogs(this)" class="text-xs font-mono text-yellow-500 border border-yellow-500/30 px-3 py-1.5 rounded hover:bg-yellow-500 hover:text-black transition-all flex items-center gap-2">
+                <i class="fas fa-sync-alt refresh-icon"></i> <span class="refresh-text">[ MAJ LOGS ]</span>
+            </button>
+        </header>
+        <div class="flex-1 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar min-h-0 flex flex-col">
+            <div class="max-w-7xl mx-auto w-full flex-1 flex flex-col bg-black/60 border border-yellow-500/30 rounded-3xl p-6 shadow-2xl">
+                
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-white/5 pb-4 gap-4">
+                    
+                    <!-- SÉLECTEUR DE SOURCE DE LOGS -->
+                    <div class="flex gap-2 bg-black/50 p-1.5 rounded-xl border border-white/10 shrink-0">
+                        <button class="log-source-btn active px-4 py-2 rounded-lg text-[10px] md:text-xs font-mono font-bold uppercase bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 transition-all shadow-inner" data-source="client">🌐 App Client</button>
+                        <button class="log-source-btn px-4 py-2 rounded-lg text-[10px] md:text-xs font-mono font-bold uppercase text-slate-400 border border-transparent hover:text-white transition-all" data-source="admin">🛡️ Admin OS</button>
+                    </div>
+                    
+                    <!-- SÉLECTEUR DE GRAVITÉ -->
+                    <div class="flex flex-wrap gap-2">
+                        <button class="log-filter-btn active bg-white/10 text-white border border-white/20 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase shadow-inner" data-log="all">TOUT</button>
+                        <button class="log-filter-btn bg-transparent border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase" data-log="petit">PETIT (INFO)</button>
+                        <button class="log-filter-btn bg-transparent border border-yellow-500/30 text-yellow-500 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase" data-log="moyen">MOYEN (ALERTE)</button>
+                        <button class="log-filter-btn bg-transparent border border-red-500/30 text-red-500 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase" data-log="grand">GRAND (CRITIQUE)</button>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3" id="logsContainer">
+                    <p class="text-xs text-slate-500 font-mono text-center mt-10">Extraction des archives en cours...</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. L'ORACLE (MASTER PROMPT) -->
+    <div id="app-oracle" class="app-screen hidden flex-1 flex flex-col bg-[#100010] relative z-40 min-h-0">
+        <header class="p-6 border-b border-fuchsia-500/20 flex items-center justify-between glass-dark shrink-0">
+            <div class="flex items-center gap-6">
+                <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="text-2xl font-bold uppercase tracking-widest text-fuchsia-400 glow-text">L'Oracle</h2>
+            </div>
+        </header>
+        <div class="flex-1 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar min-h-0">
+            <div class="max-w-4xl mx-auto space-y-6 md:space-y-8 mt-2 md:mt-6">
+                
+                <div class="bg-black/60 border border-fuchsia-500/30 p-8 rounded-3xl shadow-[0_0_30px_rgba(217,70,239,0.05)]">
+                    <div class="flex items-center gap-4 mb-6 border-b border-white/5 pb-6">
+                        <i class="fas fa-brain text-5xl text-fuchsia-500"></i>
+                        <div>
+                            <h3 class="text-2xl font-extrabold text-white uppercase tracking-widest">Directive Suprême</h3>
+                            <p class="text-[10px] text-fuchsia-400 font-mono tracking-widest">PROMPT GLOBAL DU SYSTÈME</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 font-mono mb-6 leading-relaxed">Ce texte sera injecté en priorité absolue dans le cerveau de l'IA pour TOUS les utilisateurs de l'application. Il dicte son comportement de base, ses règles de sécurité ou sa personnalité par défaut.</p>
+                    
+                    <textarea id="globalPromptInput" rows="12" placeholder="Saisir la directive globale ici (ex: Tu es l'IA suprême...)" class="w-full bg-fuchsia-950/10 border border-fuchsia-500/30 rounded-xl p-6 text-white text-sm focus:outline-none focus:border-fuchsia-400 font-mono resize-none custom-scrollbar placeholder-slate-700 shadow-inner mb-6 leading-relaxed"></textarea>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button id="resetGlobalPromptBtn" class="w-full sm:w-1/3 bg-red-600/20 border border-red-500 hover:bg-red-600 text-red-400 hover:text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                            <i class="fas fa-trash-alt mr-2"></i> PURGER
+                        </button>
+                        <button id="saveGlobalPromptBtn" class="w-full sm:w-2/3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(217,70,239,0.4)]">
+                            GRAVER DANS LE NOYAU
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+
+    <!-- SCRIPT GÉODATA ET LOGIQUE -->
+    <script>
+        const GEO_DATA = {
+            "Afrique": [
+                { name: "Afrique du Sud", emoji: "🇿🇦", cities: ["Johannesburg", "Le Cap", "Durban", "Pretoria", "Port Elizabeth"] },
+                { name: "Algérie", emoji: "🇩🇿", cities: ["Alger", "Oran", "Constantine", "Annaba", "Blida"] },
+                { name: "Angola", emoji: "🇦🇴", cities: ["Luanda", "Cabinda", "Huambo", "Lubango", "Kuito"] },
+                { name: "Bénin", emoji: "🇧🇯", cities: ["Cotonou", "Porto-Novo", "Parakou", "Djougou", "Bohicon"] },
+                { name: "Botswana", emoji: "🇧🇼", cities: ["Gaborone", "Francistown", "Molepolole", "Selebi-Phikwe", "Maun"] },
+                { name: "Burkina Faso", emoji: "🇧🇫", cities: ["Ouagadougou", "Bobo-Dioulasso", "Koudougou", "Banfora", "Ouahigouya"] },
+                { name: "Burundi", emoji: "🇧🇮", cities: ["Bujumbura", "Gitega", "Muyinga", "Ngozi", "Rumonge"] },
+                { name: "Cameroun", emoji: "🇨🇲", cities: ["Douala", "Yaoundé", "Garoua", "Bamenda", "Maroua"] },
+                { name: "Cap-Vert", emoji: "🇨🇻", cities: ["Praia", "Mindelo", "Santa Maria", "Assomada", "Pedra Badejo"] },
+                { name: "RCA", emoji: "🇨🇫", cities: ["Bangui", "Bimbo", "Berbérati", "Carnot", "Bria"] },
+                { name: "Comores", emoji: "🇰🇲", cities: ["Moroni", "Mutsamudu", "Fomboni", "Domoni", "Tsembéhou"] },
+                { name: "Congo-Brazzaville", emoji: "🇨🇬", cities: ["Brazzaville", "Pointe-Noire", "Dolisie", "Nkayi", "Ouesso"] },
+                { name: "RDC", emoji: "🇨🇩", cities: ["Kinshasa", "Lubumbashi", "Mbuji-Mayi", "Kisangani", "Goma"] },
+                { name: "Côte d'Ivoire", emoji: "🇨🇮", cities: ["Abidjan", "Bouaké", "Daloa", "Korhogo", "Yamoussoukro"] },
+                { name: "Djibouti", emoji: "🇩🇯", cities: ["Djibouti", "Ali Sabieh", "Tadjourah", "Obock", "Dikhil"] },
+                { name: "Égypte", emoji: "🇪🇬", cities: ["Le Caire", "Alexandrie", "Gizeh", "Port-Saïd", "Suez"] },
+                { name: "Érythrée", emoji: "🇪🇷", cities: ["Asmara", "Keren", "Massaoua", "Assab", "Mendefera"] },
+                { name: "Éthiopie", emoji: "🇪🇹", cities: ["Addis-Abeba", "Dire Dawa", "Mekele", "Gondar", "Bahir Dar"] },
+                { name: "Gabon", emoji: "🇬🇦", cities: ["Libreville", "Port-Gentil", "Franceville", "Oyem", "Moanda"] },
+                { name: "Gambie", emoji: "🇬🇲", cities: ["Banjul", "Brikama", "Bakau", "Farafenni", "Lamin"] },
+                { name: "Ghana", emoji: "🇬🇭", cities: ["Accra", "Kumasi", "Tamale", "Takoradi", "Ashaiman"] },
+                { name: "Guinée", emoji: "🇬🇳", cities: ["Conakry", "Nzérékoré", "Kankan", "Kindia", "Siguiri"] },
+                { name: "Guinée-Bissau", emoji: "🇬🇼", cities: ["Bissau", "Bafatá", "Gabu", "Bissorã", "Bolama"] },
+                { name: "Guinée équatoriale", emoji: "🇬🇶", cities: ["Malabo", "Bata", "Ebebiyín", "Aconibe", "Añisoc"] },
+                { name: "Kenya", emoji: "🇰🇪", cities: ["Nairobi", "Mombasa", "Kisumu", "Nakuru", "Eldoret"] },
+                { name: "Lesotho", emoji: "🇱🇸", cities: ["Maseru", "Teyateyaneng", "Mafeteng", "Hlotse", "Mohale's Hoek"] },
+                { name: "Liberia", emoji: "🇱🇷", cities: ["Monrovia", "Gbarnga", "Buchanan", "Ganta", "Kakata"] },
+                { name: "Libye", emoji: "🇱🇾", cities: ["Tripoli", "Benghazi", "Misrata", "Baïda", "Zaouïa"] },
+                { name: "Madagascar", emoji: "🇲🇬", cities: ["Antananarivo", "Toamasina", "Antsirabe", "Mahajanga", "Fianarantsoa"] },
+                { name: "Malawi", emoji: "🇲🇼", cities: ["Lilongwe", "Blantyre", "Mzuzu", "Zomba", "Kasungu"] },
+                { name: "Mali", emoji: "🇲🇱", cities: ["Bamako", "Sikasso", "Mopti", "Koutiala", "Kayes"] },
+                { name: "Maroc", emoji: "🇲🇦", cities: ["Casablanca", "Rabat", "Fès", "Marrakech", "Tanger"] },
+                { name: "Maurice", emoji: "🇲🇺", cities: ["Port-Louis", "Vacoas", "Curepipe", "Quatre Bornes", "Triolet"] },
+                { name: "Mauritanie", emoji: "🇲🇷", cities: ["Nouakchott", "Nouadhibou", "Rosso", "Boghé", "Zouérat"] },
+                { name: "Mozambique", emoji: "🇲🇿", cities: ["Maputo", "Matola", "Beira", "Nampula", "Chimoio"] },
+                { name: "Namibie", emoji: "🇳🇦", cities: ["Windhoek", "Rundu", "Walvis Bay", "Swakopmund", "Oshakati"] },
+                { name: "Niger", emoji: "🇳🇪", cities: ["Niamey", "Zinder", "Maradi", "Tahoua", "Agadez"] },
+                { name: "Nigeria", emoji: "🇳🇬", cities: ["Lagos", "Kano", "Ibadan", "Kaduna", "Port Harcourt"] },
+                { name: "Ouganda", emoji: "🇺🇬", cities: ["Kampala", "Nansana", "Kira", "Mbarara", "Mukono"] },
+                { name: "Rwanda", emoji: "🇷🇼", cities: ["Kigali", "Butare", "Gitarama", "Ruhengeri", "Gisenyi"] },
+                { name: "Sao Tomé-et-Principe", emoji: "🇸🇹", cities: ["São Tomé", "Trindade", "Neves", "Santana", "Santo Amaro"] },
+                { name: "Sénégal", emoji: "🇸🇳", cities: ["Dakar", "Touba", "Thiès", "Rufisque", "Kaolack"] },
+                { name: "Seychelles", emoji: "🇸🇨", cities: ["Victoria", "De Quincey", "Anse Boileau", "Anse Royale", "Cascade"] },
+                { name: "Sierra Leone", emoji: "🇸🇱", cities: ["Freetown", "Bo", "Kenema", "Makeni", "Koidu"] },
+                { name: "Somalie", emoji: "🇸🇴", cities: ["Mogadiscio", "Hargeisa", "Merca", "Berbera", "Kismaayo"] },
+                { name: "Soudan", emoji: "🇸🇩", cities: ["Khartoum", "Omdurman", "Nyala", "Port-Soudan", "Kassala"] },
+                { name: "Soudan du Sud", emoji: "🇸🇸", cities: ["Djouba", "Wau", "Malakal", "Yambio", "Yei"] },
+                { name: "Tanzanie", emoji: "🇹🇿", cities: ["Dar es Salam", "Mwanza", "Zanzibar", "Arusha", "Mbeya"] },
+                { name: "Tchad", emoji: "🇹🇩", cities: ["N'Djaména", "Moundou", "Sarh", "Abéché", "Kélo"] },
+                { name: "Togo", emoji: "🇹🇬", cities: ["Lomé", "Sokodé", "Kara", "Kpalimé", "Atakpamé"] },
+                { name: "Tunisie", emoji: "🇹🇳", cities: ["Tunis", "Sfax", "Sousse", "Kairouan", "Bizerte"] },
+                { name: "Zambie", emoji: "🇿🇲", cities: ["Lusaka", "Kitwe", "Ndola", "Kabwe", "Chingola"] },
+                { name: "Zimbabwe", emoji: "🇿🇼", cities: ["Harare", "Bulawayo", "Chitungwiza", "Mutare", "Gweru"] }
+            ],
+            "Amérique": [
+                { name: "Antigua-et-Barbuda", emoji: "🇦🇬", cities: ["St. John's", "All Saints", "Liberta", "Bolands", "Swetes"] },
+                { name: "Argentine", emoji: "🇦🇷", cities: ["Buenos Aires", "Córdoba", "Rosario", "Mendoza", "La Plata"] },
+                { name: "Bahamas", emoji: "🇧🇸", cities: ["Nassau", "Freeport", "West End", "Coopers Town", "Marsh Harbour"] },
+                { name: "Barbade", emoji: "🇧🇧", cities: ["Bridgetown", "Speightstown", "Oistins", "Bathsheba", "Holetown"] },
+                { name: "Belize", emoji: "🇧🇿", cities: ["Belize City", "San Ignacio", "Orange Walk", "Belmopan", "Dangriga"] },
+                { name: "Bolivie", emoji: "🇧🇴", cities: ["Santa Cruz", "El Alto", "La Paz", "Cochabamba", "Oruro"] },
+                { name: "Brésil", emoji: "🇧🇷", cities: ["São Paulo", "Rio de Janeiro", "Brasilia", "Salvador", "Fortaleza"] },
+                { name: "Canada", emoji: "🇨🇦", cities: ["Toronto", "Montréal", "Vancouver", "Calgary", "Ottawa"] },
+                { name: "Chili", emoji: "🇨🇱", cities: ["Santiago", "Puente Alto", "Antofagasta", "Viña del Mar", "Valparaíso"] },
+                { name: "Colombie", emoji: "🇨🇴", cities: ["Bogotá", "Medellín", "Cali", "Barranquilla", "Carthagène"] },
+                { name: "Costa Rica", emoji: "🇨🇷", cities: ["San José", "Limón", "Alajuela", "San Francisco", "Desamparados"] },
+                { name: "Cuba", emoji: "🇨🇺", cities: ["La Havane", "Santiago de Cuba", "Camagüey", "Holguín", "Guantánamo"] },
+                { name: "Rép. Dominicaine", emoji: "🇩🇴", cities: ["Saint-Domingue", "Santiago", "Los Alcarrizos", "La Romana", "San Pedro"] },
+                { name: "Dominique", emoji: "🇩🇲", cities: ["Roseau", "Portsmouth", "Berekua", "Marigot", "Oistins"] },
+                { name: "Équateur", emoji: "🇪🇨", cities: ["Guayaquil", "Quito", "Cuenca", "Santo Domingo", "Machala"] },
+                { name: "États-Unis", emoji: "🇺🇸", cities: ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"] },
+                { name: "Grenade", emoji: "🇬🇩", cities: ["St. George's", "Gouyave", "Grenville", "Victoria", "St. David's"] },
+                { name: "Guatemala", emoji: "🇬🇹", cities: ["Guatemala", "Mixco", "Villa Nueva", "Cobán", "Quetzaltenango"] },
+                { name: "Guyana", emoji: "🇬🇾", cities: ["Georgetown", "Linden", "New Amsterdam", "Anna Regina", "Bartica"] },
+                { name: "Haïti", emoji: "🇭🇹", cities: ["Port-au-Prince", "Carrefour", "Delmas", "Pétion-Ville", "Gonaïves"] },
+                { name: "Honduras", emoji: "🇭🇳", cities: ["Tegucigalpa", "San Pedro Sula", "Choloma", "La Ceiba", "El Progreso"] },
+                { name: "Jamaïque", emoji: "🇯🇲", cities: ["Kingston", "Portmore", "Spanish Town", "Montego Bay", "May Pen"] },
+                { name: "Mexique", emoji: "🇲🇽", cities: ["Mexico", "Guadalajara", "Monterrey", "Puebla", "Tijuana"] },
+                { name: "Nicaragua", emoji: "🇳🇮", cities: ["Managua", "León", "Masaya", "Matagalpa", "Chinande"] },
+                { name: "Panama", emoji: "🇵🇦", cities: ["Panama", "San Miguelito", "Tocumen", "David", "Arraiján"] },
+                { name: "Paraguay", emoji: "🇵🇾", cities: ["Asunción", "Ciudad del Este", "San Lorenzo", "Luque", "Capiatá"] },
+                { name: "Pérou", emoji: "🇵🇪", cities: ["Lima", "Arequipa", "Trujillo", "Chiclayo", "Piura"] },
+                { name: "Saint-Kitts-et-Nevis", emoji: "🇰🇳", cities: ["Basseterre", "Charlestown", "Saint Paul's", "Sadlers", "Middle Island"] },
+                { name: "Sainte-Lucie", emoji: "🇱🇨", cities: ["Castries", "Bisee", "Vieux Fort", "Micoud", "Soufrière"] },
+                { name: "Saint-Vincent", emoji: "🇻🇨", cities: ["Kingstown", "Georgetown", "Byera", "Biabou", "Chateaubelair"] },
+                { name: "El Salvador", emoji: "🇸🇻", cities: ["San Salvador", "Soyapango", "Santa Ana", "San Miguel", "Mejicanos"] },
+                { name: "Suriname", emoji: "🇸🇷", cities: ["Paramaribo", "Lelydorp", "Brokopondo", "Nieuw Nickerie", "Meerzorg"] },
+                { name: "Trinité-et-Tobago", emoji: "🇹🇹", cities: ["Chaguanas", "San Fernando", "Port of Spain", "Arima", "Marabella"] },
+                { name: "Uruguay", emoji: "🇺🇾", cities: ["Montevideo", "Salto", "Paysandú", "Las Piedras", "Rivera"] },
+                { name: "Venezuela", emoji: "🇻🇪", cities: ["Caracas", "Maracaibo", "Valencia", "Barquisimeto", "Maracay"] }
+            ],
+            "Asie": [
+                { name: "Afghanistan", emoji: "🇦🇫", cities: ["Kaboul", "Kandahar", "Herat", "Mazar-e-Charif", "Jalalabad"] },
+                { name: "Bangladesh", emoji: "🇧🇩", cities: ["Dacca", "Chittagong", "Khulna", "Rajshahi", "Sylhet"] },
+                { name: "Bhoutan", emoji: "🇧🇹", cities: ["Thimphou", "Phuntsholing", "Punakha", "Samdrup Jongkhar", "Gelephu"] },
+                { name: "Brunei", emoji: "🇧🇳", cities: ["Bandar Seri Begawan", "Kuala Belait", "Seria", "Tutong", "Bangar"] },
+                { name: "Cambodge", emoji: "🇰🇭", cities: ["Phnom Penh", "Siem Reap", "Battambang", "Sihanoukville", "Poipet"] },
+                { name: "Chine", emoji: "🇨🇳", cities: ["Pékin", "Shanghai", "Guangzhou", "Shenzhen", "Chengdu"] },
+                { name: "Corée du Nord", emoji: "🇰🇵", cities: ["Pyongyang", "Hamhung", "Chongjin", "Nampo", "Wonsan"] },
+                { name: "Corée du Sud", emoji: "🇰🇷", cities: ["Séoul", "Busan", "Incheon", "Daegu", "Daejeon"] },
+                { name: "Inde", emoji: "🇮🇳", cities: ["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai"] },
+                { name: "Indonésie", emoji: "🇮🇩", cities: ["Jakarta", "Surabaya", "Bandung", "Medan", "Semarang"] },
+                { name: "Japon", emoji: "🇯🇵", cities: ["Tokyo", "Yokohama", "Osaka", "Nagoya", "Sapporo"] },
+                { name: "Kazakhstan", emoji: "🇰🇿", cities: ["Almaty", "Noursoultan", "Chimkent", "Karaganda", "Aktobé"] },
+                { name: "Kirghizistan", emoji: "🇰🇬", cities: ["Bichkek", "Och", "Djalal-Abad", "Karakol", "Tokmok"] },
+                { name: "Laos", emoji: "🇱🇦", cities: ["Vientiane", "Pakse", "Savannakhet", "Luang Prabang", "Xam Neua"] },
+                { name: "Malaisie", emoji: "🇲🇾", cities: ["Kuala Lumpur", "George Town", "Ipoh", "Shah Alam", "Petaling Jaya"] },
+                { name: "Maldives", emoji: "🇲🇻", cities: ["Malé", "Addu", "Fuvahmulah", "Kulhudhuffushi", "Thinadhoo"] },
+                { name: "Mongolie", emoji: "🇲🇳", cities: ["Oulan-Bator", "Erdenet", "Darkhan", "Choibalsan", "Mörön"] },
+                { name: "Myanmar", emoji: "🇲🇲", cities: ["Rangoun", "Mandalay", "Naypyidaw", "Mawlamyine", "Bago"] },
+                { name: "Népal", emoji: "🇳🇵", cities: ["Katmandou", "Pokhara", "Lalitpur", "Biratnagar", "Birganj"] },
+                { name: "Ouzbékistan", emoji: "🇺🇿", cities: ["Tachkent", "Namangan", "Samarcande", "Andijan", "Boukhara"] },
+                { name: "Pakistan", emoji: "🇵🇰", cities: ["Karachi", "Lahore", "Faisalabad", "Rawalpindi", "Gujranwala"] },
+                { name: "Philippines", emoji: "🇵🇭", cities: ["Manille", "Quezon City", "Davao", "Caloocan", "Cebu"] },
+                { name: "Singapour", emoji: "🇸🇬", cities: ["Singapour", "Woodlands", "Jurong East", "Tampines", "Bedok"] },
+                { name: "Sri Lanka", emoji: "🇱🇰", cities: ["Colombo", "Dehiwala", "Moratuwa", "Kotte", "Negombo"] },
+                { name: "Tadjikistan", emoji: "🇹🇯", cities: ["Douchanbé", "Khodjent", "Kulob", "Qurghonteppa", "Istaravchan"] },
+                { name: "Taïwan", emoji: "🇹🇼", cities: ["Taipei", "Kaohsiung", "New Taipei", "Taichung", "Tainan"] },
+                { name: "Thaïlande", emoji: "🇹🇭", cities: ["Bangkok", "Nonthaburi", "Nakhon Ratchasima", "Chiang Mai", "Hat Yai"] },
+                { name: "Turkménistan", emoji: "🇹🇲", cities: ["Achgabat", "Türkmenabat", "Daşoguz", "Mary", "Balkanabat"] },
+                { name: "Viêt Nam", emoji: "🇻🇳", cities: ["Hô Chi Minh", "Hanoï", "Da Nang", "Haïphong", "Bien Hoa"] }
+            ],
+            "Moyen-Orient": [
+                { name: "Arabie Saoudite", emoji: "🇸🇦", cities: ["Riyad", "Djeddah", "La Mecque", "Médine", "Dammam"] },
+                { name: "Bahreïn", emoji: "🇧🇭", cities: ["Manama", "Riffa", "Muharraq", "Hamad Town", "A'ali"] },
+                { name: "Émirats Arabes Unis", emoji: "🇦🇪", cities: ["Dubaï", "Abou Dabi", "Charjah", "Al-Aïn", "Ajman"] },
+                { name: "Irak", emoji: "🇮🇶", cities: ["Bagdad", "Bassorah", "Mossoul", "Erbil", "Kirkouk"] },
+                { name: "Iran", emoji: "🇮🇷", cities: ["Téhéran", "Mechhed", "Ispahan", "Karaj", "Chiraz"] },
+                { name: "Israël", emoji: "🇮🇱", cities: ["Jérusalem", "Tel-Aviv", "Haïfa", "Rishon LeZion", "Petah Tikva"] },
+                { name: "Jordanie", emoji: "🇯🇴", cities: ["Amman", "Zarqa", "Irbid", "Roussseifa", "Aqaba"] },
+                { name: "Koweït", emoji: "🇰🇼", cities: ["Koweït", "Al Ahmadi", "Hawalli", "As Salimiyah", "Sabah as Salim"] },
+                { name: "Liban", emoji: "🇱🇧", cities: ["Beyrouth", "Tripoli", "Sidon", "Tyr", "Nabatieh"] },
+                { name: "Oman", emoji: "🇴🇲", cities: ["Mascate", "Salalah", "Sohar", "Nizwa", "Sur"] },
+                { name: "Palestine", emoji: "🇵🇸", cities: ["Gaza", "Hébron", "Naplouse", "Khan Younès", "Jabalia"] },
+                { name: "Qatar", emoji: "🇶🇦", cities: ["Doha", "Al Rayyan", "Umm Salal", "Al Wakrah", "Al Khor"] },
+                { name: "Syrie", emoji: "🇸🇾", cities: ["Alep", "Damas", "Homs", "Lattaquié", "Hama"] },
+                { name: "Yémen", emoji: "🇾🇪", cities: ["Sanaa", "Aden", "Ta'izz", "Al-Hodeïda", "Mukalla"] }
+            ],
+            "Europe": [
+                { name: "Albanie", emoji: "🇦🇱", cities: ["Tirana", "Durrës", "Vlora", "Elbasan", "Shkodër"] },
+                { name: "Allemagne", emoji: "🇩🇪", cities: ["Berlin", "Hambourg", "Munich", "Cologne", "Francfort"] },
+                { name: "Andorre", emoji: "🇦🇩", cities: ["Andorre-la-Vieille", "Escaldes", "Encamp", "Sant Julià", "La Massana"] },
+                { name: "Arménie", emoji: "🇦🇲", cities: ["Erevan", "Gyumri", "Vanadzor", "Vagharshapat", "Abovyan"] },
+                { name: "Autriche", emoji: "🇦🇹", cities: ["Vienne", "Graz", "Linz", "Salzbourg", "Innsbruck"] },
+                { name: "Azerbaïdjan", emoji: "🇦🇿", cities: ["Bakou", "Gandja", "Sumqayit", "Mingachevir", "Qaraçuxur"] },
+                { name: "Belgique", emoji: "🇧🇪", cities: ["Bruxelles", "Anvers", "Gand", "Charleroi", "Liège"] },
+                { name: "Biélorussie", emoji: "🇧🇾", cities: ["Minsk", "Gomel", "Mogilev", "Vitebsk", "Grodno"] },
+                { name: "Bosnie", emoji: "🇧🇦", cities: ["Sarajevo", "Banja Luka", "Tuzla", "Zenica", "Mostar"] },
+                { name: "Bulgarie", emoji: "🇧🇬", cities: ["Sofia", "Plovdiv", "Varna", "Bourgas", "Roussé"] },
+                { name: "Chypre", emoji: "🇨🇾", cities: ["Nicosie", "Limassol", "Larnaca", "Paphos", "Famagouste"] },
+                { name: "Croatie", emoji: "🇭🇷", cities: ["Zagreb", "Split", "Rijeka", "Osijek", "Zadar"] },
+                { name: "Danemark", emoji: "🇩🇰", cities: ["Copenhague", "Aarhus", "Odense", "Aalborg", "Esbjerg"] },
+                { name: "Espagne", emoji: "🇪🇸", cities: ["Madrid", "Barcelone", "Valence", "Séville", "Saragosse"] },
+                { name: "Estonie", emoji: "🇪🇪", cities: ["Tallinn", "Tartu", "Narva", "Pärnu", "Kohtla-Järve"] },
+                { name: "Finlande", emoji: "🇫🇮", cities: ["Helsinki", "Espoo", "Tampere", "Vantaa", "Oulu"] },
+                { name: "France", emoji: "🇫🇷", cities: ["Paris", "Marseille", "Lyon", "Toulouse", "Nice"] },
+                { name: "Géorgie", emoji: "🇬🇪", cities: ["Tbilissi", "Batoumi", "Koutaïssi", "Roustavi", "Gori"] },
+                { name: "Grèce", emoji: "🇬🇷", cities: ["Athènes", "Thessalonique", "Patras", "Héraklion", "Larissa"] },
+                { name: "Hongrie", emoji: "🇭🇺", cities: ["Budapest", "Debrecen", "Szeged", "Miskolc", "Pécs"] },
+                { name: "Irlande", emoji: "🇮🇪", cities: ["Dublin", "Cork", "Limerick", "Galway", "Waterford"] },
+                { name: "Islande", emoji: "🇮🇸", cities: ["Reykjavik", "Kópavogur", "Hafnarfjörður", "Akureyri", "Keflavík"] },
+                { name: "Italie", emoji: "🇮🇹", cities: ["Rome", "Milan", "Naples", "Turin", "Palerme"] },
+                { name: "Lettonie", emoji: "🇱🇻", cities: ["Riga", "Daugavpils", "Liepāja", "Jelgava", "Jūrmala"] },
+                { name: "Liechtenstein", emoji: "🇱🇮", cities: ["Schaan", "Vaduz", "Triesen", "Balzers", "Eschen"] },
+                { name: "Lituanie", emoji: "🇱🇹", cities: ["Vilnius", "Kaunas", "Klaipėda", "Šiauliai", "Panevėžys"] },
+                { name: "Luxembourg", emoji: "🇱🇺", cities: ["Luxembourg", "Esch", "Differdange", "Dudelange", "Pétange"] },
+                { name: "Macédoine", emoji: "🇲🇰", cities: ["Skopje", "Bitola", "Kumanovo", "Prilep", "Tetovo"] },
+                { name: "Malte", emoji: "🇲🇹", cities: ["Birkirkara", "Qormi", "Mosta", "Żabbar", "St. Paul's Bay"] },
+                { name: "Moldavie", emoji: "🇲🇩", cities: ["Chișinău", "Tiraspol", "Bălți", "Bender", "Rîbnița"] },
+                { name: "Monaco", emoji: "🇲🇨", cities: ["Monaco", "Monte-Carlo", "La Condamine", "Fontvieille", "Les Moneghetti"] },
+                { name: "Monténégro", emoji: "🇲🇪", cities: ["Podgorica", "Nikšić", "Pljevlja", "Bijelo Polje", "Cetinje"] },
+                { name: "Norvège", emoji: "🇳🇴", cities: ["Oslo", "Bergen", "Trondheim", "Stavanger", "Bærum"] },
+                { name: "Pays-Bas", emoji: "🇳🇱", cities: ["Amsterdam", "Rotterdam", "La Haye", "Utrecht", "Eindhoven"] },
+                { name: "Pologne", emoji: "🇵🇱", cities: ["Varsovie", "Cracovie", "Łódź", "Wrocław", "Poznań"] },
+                { name: "Portugal", emoji: "🇵🇹", cities: ["Lisbonne", "Porto", "Gaia", "Amadora", "Braga"] },
+                { name: "Rép. Tchèque", emoji: "🇨🇿", cities: ["Prague", "Brno", "Ostrava", "Plzeň", "Liberec"] },
+                { name: "Roumanie", emoji: "🇷🇴", cities: ["Bucarest", "Cluj-Napoca", "Timișoara", "Iași", "Constanța"] },
+                { name: "Royaume-Uni", emoji: "🇬🇧", cities: ["Londres", "Birmingham", "Manchester", "Glasgow", "Liverpool"] },
+                { name: "Russie", emoji: "🇷🇺", cities: ["Moscou", "Saint-Pétersbourg", "Novossibirsk", "Iekaterinbourg", "Kazan"] },
+                { name: "Saint-Marin", emoji: "🇸🇲", cities: ["Dogana", "Borgo Maggiore", "Saint-Marin", "Domagnano", "Fiorentino"] },
+                { name: "Serbie", emoji: "🇷🇸", cities: ["Belgrade", "Novi Sad", "Niš", "Kragujevac", "Subotica"] },
+                { name: "Slovaquie", emoji: "🇸🇰", cities: ["Bratislava", "Košice", "Prešov", "Žilina", "Banská Bystrica"] },
+                { name: "Slovénie", emoji: "🇸🇮", cities: ["Ljubljana", "Maribor", "Celje", "Kranj", "Velenje"] },
+                { name: "Suède", emoji: "🇸🇪", cities: ["Stockholm", "Göteborg", "Malmö", "Uppsala", "Västerås"] },
+                { name: "Suisse", emoji: "🇨🇭", cities: ["Zurich", "Genève", "Bâle", "Lausanne", "Berne"] },
+                { name: "Turquie", emoji: "🇹🇷", cities: ["Istanbul", "Ankara", "Izmir", "Bursa", "Antalya"] },
+                { name: "Ukraine", emoji: "🇺🇦", cities: ["Kiev", "Kharkiv", "Odessa", "Dnipro", "Donetsk"] }
+            ],
+            "Océanie": [
+                { name: "Australie", emoji: "🇦🇺", cities: ["Sydney", "Melbourne", "Brisbane", "Perth", "Adélaïde"] },
+                { name: "Fidji", emoji: "🇫🇯", cities: ["Suva", "Lautoka", "Nadi", "Labasa", "Ba"] },
+                { name: "Îles Marshall", emoji: "🇲🇭", cities: ["Majuro", "Ebeye", "Arno", "Jaluit", "Kili"] },
+                { name: "Îles Salomon", emoji: "🇸🇧", cities: ["Honiara", "Auki", "Gizo", "Buala", "Tulagi"] },
+                { name: "Kiribati", emoji: "🇰🇮", cities: ["Tarawa", "Betio", "Bikenibeu", "Bairiki", "Bonriki"] },
+                { name: "Micronésie", emoji: "🇫🇲", cities: ["Palikir", "Weno", "Kolonia", "Lelu", "Tofol"] },
+                { name: "Nauru", emoji: "🇳🇷", cities: ["Yaren", "Denigomodu", "Meneng", "Aiwo", "Boe"] },
+                { name: "Nouvelle-Zélande", emoji: "🇳🇿", cities: ["Auckland", "Wellington", "Christchurch", "Hamilton", "Tauranga"] },
+                { name: "Palaos", emoji: "🇵🇼", cities: ["Koror", "Meyuns", "Airai", "Kloulklubed", "Ngerkeai"] },
+                { name: "Papouasie", emoji: "🇵🇬", cities: ["Port Moresby", "Lae", "Arawa", "Mount Hagen", "Popondetta"] },
+                { name: "Samoa", emoji: "🇼🇸", cities: ["Apia", "Vaitele", "Faleasiu", "Vailele", "Leauvaa"] },
+                { name: "Tonga", emoji: "🇹🇴", cities: ["Nukuʻalofa", "Neiafu", "Haveluloto", "Vaini", "Pangai"] },
+                { name: "Tuvalu", emoji: "🇹🇻", cities: ["Funafuti", "Vaiaku", "Asau", "Lolua", "Fongafale"] },
+                { name: "Vanuatu", emoji: "🇻🇺", cities: ["Funafuti", "Vaiaku", "Asau", "Lolua", "Fongafale"] }
+            ]
+        };
+
+        // Fonction ultra-robuste pour trouver l'emoji d'un pays
+        const getFlagForCountry = (countryName) => {
+            if(!countryName) return "🏳️";
+            
+            // Dictionnaire pour traduire les noms anglais fréquents renvoyés par les APIs IP
+            const engToFr = {
+                "united states": "États-Unis", "usa": "États-Unis", "united kingdom": "Royaume-Uni", "uk": "Royaume-Uni",
+                "algeria": "Algérie", "morocco": "Maroc", "tunisia": "Tunisie", "germany": "Allemagne",
+                "spain": "Espagne", "italy": "Italie", "brazil": "Brésil", "south africa": "Afrique du Sud",
+                "russia": "Russie", "japan": "Japon", "china": "Chine", "india": "Inde", "egypt": "Égypte",
+                "switzerland": "Suisse", "belgium": "Belgique", "netherlands": "Pays-Bas", "sweden": "Suède",
+                "turkey": "Turquie", "mexico": "Mexique", "colombia": "Colombie", "argentina": "Argentine",
+                "saudi arabia": "Arabie Saoudite", "uae": "Émirats Arabes Unis", "united arab emirates": "Émirats Arabes Unis",
+                "ivory coast": "Côte d'Ivoire", "senegal": "Sénégal", "cameroon": "Cameroun", "lebanon": "Liban"
+            };
+
+            let searchName = countryName.toLowerCase().trim();
+            if (engToFr[searchName]) searchName = engToFr[searchName].toLowerCase();
+
+            // Fonction pour enlever les accents pour une correspondance parfaite
+            const removeAccents = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const normalizedSearch = removeAccents(searchName);
+
+            for (const continent in GEO_DATA) {
+                const found = GEO_DATA[continent].find(c => 
+                    c.name.toLowerCase() === searchName || 
+                    removeAccents(c.name.toLowerCase()) === normalizedSearch
+                );
+                if (found) return found.emoji;
+            }
+            return "🏳️"; // Drapeau blanc si introuvable
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const { auth, db, signInAnonymously, collection, query, onSnapshot, doc, getDocs, setDoc, getDoc, collectionGroup, updateDoc, deleteDoc, addDoc, orderBy, limit } = window.firebaseTools;
+            const appId = window.__app_id;
+
+            const loginScreen = document.getElementById('loginScreen');
+            const hubScreen = document.getElementById('hubScreen');
+            
+            let currentAdmin = null;
+            let globalUsers = [];
+            let globalSecurity = [];
+            let systemConfig = { maintenance: false, gemini_api_keys: [], admin_pin: "1994", global_prompt: "" };
+            let geoRestrictions = { countries: {}, continents: {} }; 
+            let currentCountryContext = null; 
+
+            // ==========================================
+            // MODALS & UI UTILS
+            // ==========================================
+            
+            function showToast(msg, type = 'info') {
+                const toast = document.getElementById('toast');
+                const icon = document.getElementById('toast-icon');
+                document.getElementById('toast-msg').innerText = msg;
+                
+                toast.classList.remove('border-purple-500', 'border-red-500', 'border-green-500');
+                if(type === 'error') { toast.classList.add('border-red-500'); icon.className = 'fas fa-exclamation-triangle text-red-500'; }
+                else if(type === 'success') { toast.classList.add('border-green-500'); icon.className = 'fas fa-check text-green-500'; }
+                else { toast.classList.add('border-purple-500'); icon.className = 'fas fa-terminal text-purple-500'; }
+                
+                toast.classList.remove('-translate-y-[150%]');
+                setTimeout(() => toast.classList.add('-translate-y-[150%]'), 3000);
+            }
+
+            let modalTargetUser = null;
+            let modalTargetSecPath = null;
+
+            window.openUserModal = (uid) => {
+                const u = globalUsers.find(x => x.uid === uid);
+                const sec = globalSecurity.find(x => x.uid === uid) || {};
+                if(!u) return;
+
+                modalTargetUser = u;
+                modalTargetSecPath = sec.path || null;
+
+                const isBanned = sec.isDisabled === true;
+                const cName = u.country || 'Inconnu';
+                const flag = getFlagForCountry(cName);
+                const avatarUrl = `https://ui-avatars.com/api/?name=${u.userName || sec.name || 'U'}&background=1e293b&color=fff`;
+
+                document.getElementById('modalUserAvatar').innerHTML = `<img src="${avatarUrl}" class="w-full h-full rounded-xl object-cover">`;
+                document.getElementById('modalUserName').innerText = u.userName || sec.name || 'Inconnu';
+                document.getElementById('modalUserEmail').innerText = u.userEmail || sec.owner || 'N/A';
+                document.getElementById('modalUserLocation').innerHTML = `${flag} ${u.city || '?'}, ${cName}`;
+                document.getElementById('modalUserKey').innerText = sec.key || '---';
+
+                const platformBadge = document.getElementById('modalUserPlatform');
+                if (u.isInstalled === true) {
+                    platformBadge.innerHTML = `<i class="fas fa-mobile-alt text-blue-400 text-lg"></i> <span class="text-blue-300">APP INSTALLÉE (PWA)</span>`;
+                    platformBadge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest border border-blue-500/30 bg-blue-500/10";
+                } else {
+                    platformBadge.innerHTML = `<i class="fas fa-globe text-slate-400 text-lg"></i> <span class="text-slate-300">NAVIGATEUR WEB</span>`;
+                    platformBadge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest border border-slate-500/30 bg-slate-500/10";
+                }
+
+                const banBtn = document.getElementById('modalBanBtn');
+                if(isBanned) {
+                    banBtn.innerHTML = "[ RÉANIMER LE COMPTE ]";
+                    banBtn.className = "w-full py-4 rounded-xl font-bold font-mono text-[12px] tracking-widest uppercase transition-all bg-green-600/20 text-green-400 border border-green-500 hover:bg-green-600 hover:text-white shadow-[0_0_20px_rgba(34,197,94,0.2)]";
+                } else {
+                    banBtn.innerHTML = "[ BANNIR LE COMPTE ]";
+                    banBtn.className = "w-full py-4 rounded-xl font-bold font-mono text-[12px] tracking-widest uppercase transition-all bg-red-600/20 text-red-400 border border-red-500 hover:bg-red-600 hover:text-white shadow-[0_0_20px_rgba(239,68,68,0.2)]";
+                }
+                
+                const modal = document.getElementById('userModal');
+                const content = document.getElementById('userModalContent');
+                modal.classList.remove('hidden');
+                setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); }, 10);
+            };
+
+            window.closeUserModal = () => {
+                const modal = document.getElementById('userModal');
+                const content = document.getElementById('userModalContent');
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => { modal.classList.add('hidden'); }, 200);
+            };
+
+            document.getElementById('modalBanBtn').onclick = async () => {
+                if(!modalTargetSecPath) { showToast("Cible Introuvable (Pas de doc sécu)", "error"); return; }
+                const sec = globalSecurity.find(x => x.path === modalTargetSecPath);
+                const isBanned = sec.isDisabled === true;
+                
+                if(confirm(isBanned ? "Pardonner cette cible ?" : "Anéantir cet accès ?")) {
+                    try {
+                        await updateDoc(doc(db, modalTargetSecPath), { isDisabled: !isBanned });
+                        showToast("JUGEMENT EXÉCUTÉ", "success");
+                        closeUserModal();
+                        fetchUsers(); 
+                    } catch(err) { showToast("Échec critique", "error"); }
+                }
+            };
+
+            window.openLogoutModal = () => {
+                const modal = document.getElementById('logoutModal');
+                const content = document.getElementById('logoutModalContent');
+                modal.classList.remove('hidden');
+                setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); }, 10);
+            };
+
+            window.closeLogoutModal = () => {
+                const modal = document.getElementById('logoutModal');
+                const content = document.getElementById('logoutModalContent');
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => { modal.classList.add('hidden'); }, 200);
+            };
+
+            document.getElementById('confirmLogoutBtn').onclick = () => {
+                sessionStorage.removeItem('lvl_admin_key');
+                window.location.reload();
+            };
+
+            window.openStatList = (type) => {
+                const titleEl = document.getElementById('statListTitle');
+                const countEl = document.getElementById('statListCount');
+                const container = document.getElementById('statListContainer');
+                
+                const now = Date.now();
+                container.innerHTML = '';
+
+                if (type === 'keys') {
+                    titleEl.innerText = "Clés Générées";
+                    countEl.innerText = `${globalSecurity.length} Clé(s) au total`;
+                    
+                    globalSecurity.forEach(sec => {
+                        const u = globalUsers.find(user => user.uid === sec.uid) || {};
+                        const cName = u.country || 'Inconnu';
+                        const name = u.userName || sec.name || 'Inconnu';
+                        const isOnline = u.isOnline && (now - u.lastSeen < 120000);
+                        const onlineIndicator = isOnline ? '<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-slate-700"></div>';
+                        const isBanned = sec.isDisabled === true;
+                        
+                        const item = document.createElement('div');
+                        item.className = "bg-black/50 border border-white/5 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors";
+                        item.onclick = () => { 
+                            if(u.uid) { closeStatListModal(); openUserModal(u.uid); }
+                            else { showToast("Utilisateur jamais connecté", "error"); }
+                        };
+                        item.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                ${onlineIndicator}
+                                <div class="min-w-0">
+                                    <p class="text-sm font-bold text-white truncate">${name}</p>
+                                    <p class="text-[9px] text-slate-400 font-mono truncate">${sec.key} • ${sec.owner}</p>
+                                </div>
+                            </div>
+                            <div class="text-[9px] font-bold tracking-widest uppercase shrink-0 ml-2">
+                                ${isBanned ? '<span class="text-red-400 bg-red-500/20 px-2 py-1 rounded border border-red-500/30">BANNI</span>' : '<span class="text-green-400 bg-green-500/20 px-2 py-1 rounded border border-green-500/30">ACTIF</span>'}
+                            </div>
+                        `;
+                        container.appendChild(item);
+                    });
+                } else {
+                    let filtered = [];
+                    if (type === 'all') { titleEl.innerText = "Tous les Utilisateurs"; filtered = globalUsers; } 
+                    else if (type === 'online') { titleEl.innerText = "Utilisateurs En Ligne"; filtered = globalUsers.filter(u => u.isOnline && (now - u.lastSeen < 120000)); } 
+                    else if (type === 'installed') { titleEl.innerText = "Installations (PWA)"; filtered = globalUsers.filter(u => u.isInstalled === true); }
+
+                    countEl.innerText = `${filtered.length} Résultat(s) Piste(s)`;
+                    
+                    filtered.forEach(u => {
+                        const cName = u.country || 'Inconnu';
+                        const flag = getFlagForCountry(cName);
+                        const name = u.userName || 'Inconnu';
+                        const isOnline = u.isOnline && (now - u.lastSeen < 120000);
+                        const onlineIndicator = isOnline ? '<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-slate-700"></div>';
+                        
+                        const item = document.createElement('div');
+                        item.className = "bg-black/50 border border-white/5 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors";
+                        item.onclick = () => { closeStatListModal(); openUserModal(u.uid); };
+                        item.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                ${onlineIndicator}
+                                <div class="min-w-0">
+                                    <p class="text-sm font-bold text-white truncate">${name}</p>
+                                    <p class="text-[9px] text-slate-400 font-mono truncate">${flag} ${u.city||'?'}, ${cName}</p>
+                                </div>
+                            </div>
+                            <div class="text-[9px] font-bold tracking-widest uppercase shrink-0 ml-2">
+                                ${u.isInstalled ? '<span class="text-blue-400 bg-blue-500/20 px-2 py-1 rounded border border-blue-500/30">PWA</span>' : '<span class="text-slate-400 bg-slate-500/20 px-2 py-1 rounded border border-slate-500/30">WEB</span>'}
+                            </div>
+                        `;
+                        container.appendChild(item);
+                    });
+                }
+
+                const modal = document.getElementById('statListModal');
+                const content = document.getElementById('statListModalContent');
+                modal.classList.remove('hidden');
+                setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); }, 10);
+            };
+
+            window.closeStatListModal = () => {
+                const modal = document.getElementById('statListModal');
+                const content = document.getElementById('statListModalContent');
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => { modal.classList.add('hidden'); }, 200);
+            };
+
+            window.openApp = (appId) => {
+                hubScreen.classList.add('hidden');
+                document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
+                document.getElementById(appId).classList.remove('hidden');
+                if (appId === 'app-archives') loadLogs();
+            };
+
+            window.backToHub = () => {
+                document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
+                hubScreen.classList.remove('hidden');
+            };
+
+            // ==========================================
+            // LOGIN LOGIC (2 STEPS)
+            // ==========================================
+            let tempAdminKey = "";
+
+            const adminKeyInput = document.getElementById('adminKeyInput');
+            if (adminKeyInput) {
+                adminKeyInput.addEventListener('input', function(e) {
+                    let val = this.value.toUpperCase();
+                    val = val.replace(/[^A-Z0-9-]/g, '');
+                    
+                    if (val.length > 0) {
+                        const isOldFormat = val.startsWith('T') || val.startsWith('TH') || val.startsWith('THB');
+                        const isNewFormat = val.startsWith('L') || val.startsWith('LV') || val.startsWith('LVL');
+                        
+                        if (!isOldFormat && !isNewFormat) {
+                            val = 'LVL-' + val.replace(/^-+/, ''); 
+                        }
+                    }
+                    this.value = val.substring(0, 15);
+                });
+            }
+
+            document.getElementById('nextStepBtn').onclick = async () => {
+                const key = document.getElementById('adminKeyInput').value.trim().toUpperCase();
+                if(!key) return;
+                
+                const btn = document.getElementById('nextStepBtn');
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                const errEl = document.getElementById('loginError');
+                errEl.classList.add('hidden');
+
+                const keyFormatRegex = /^(LVL|THB)-[A-Z0-9]{3,6}-[A-Z0-9]{3,6}$/;
+                if (!keyFormatRegex.test(key)) {
+                    errEl.innerText = "> FORMAT DE CLÉ INVALIDE.";
+                    errEl.classList.remove('hidden');
+                    btn.innerHTML = 'SUIVANT <i class="fas fa-arrow-right"></i>';
+                    return;
+                }
+
+                try {
+                    if (!auth.currentUser) await signInAnonymously(auth);
+                    const q = collectionGroup(db, 'security');
+                    const snap = await getDocs(q);
+                    let valid = false;
+                    snap.forEach(d => {
+                        const data = d.data();
+                        if (data.key === key && (data.isAdmin === true || data.role === 'admin')) valid = true;
+                    });
+
+                    if(valid) {
+                        tempAdminKey = key;
+                        document.getElementById('loginStep1').classList.add('hidden');
+                        document.getElementById('loginStep2').classList.remove('hidden');
+                    } else {
+                        throw new Error('Invalid Key');
+                    }
+                } catch(e) {
+                    errEl.innerText = "> CLÉ INVALIDE OU ACCÈS REFUSÉ.";
+                    errEl.classList.remove('hidden');
+                }
+                btn.innerHTML = 'SUIVANT <i class="fas fa-arrow-right"></i>';
+            };
+
+            document.getElementById('loginBtn').onclick = async () => {
+                const pin = document.getElementById('adminPinInput').value.trim();
+                const btn = document.getElementById('loginBtn');
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                const errEl = document.getElementById('loginError');
+                errEl.classList.add('hidden');
+
+                try {
+                    const configDoc = await getDoc(doc(db, "artifacts", appId, "system", "config"));
+                    const realPin = configDoc.exists() && configDoc.data().admin_pin ? configDoc.data().admin_pin : "1994";
+                    
+                    if(pin !== realPin) throw new Error('Pin Invalide');
+
+                    const q = collectionGroup(db, 'security');
+                    const snap = await getDocs(q);
+                    let adminFound = null;
+                    snap.forEach(d => {
+                        const data = d.data();
+                        if (data.key === tempAdminKey) adminFound = data;
+                    });
+
+                    currentAdmin = adminFound;
+                    sessionStorage.setItem('lvl_admin_key', tempAdminKey);
+                    document.getElementById('adminNameDisplay').innerText = adminFound.name || 'Commandant';
+                    
+                    loginScreen.classList.add('hidden');
+                    hubScreen.classList.remove('hidden');
+                    hubScreen.classList.add('flex');
+                    
+                    showToast('ACCÈS AUTORISÉ AU NOYAU', 'success');
+                    window.loadData(); 
+
+                } catch(e) {
+                    errEl.innerText = "> CODE PIN INCORRECT.";
+                    errEl.classList.remove('hidden');
+                }
+                btn.innerHTML = '<i class="fas fa-lock-open"></i> DÉVERROUILLER';
+            };
+
+            setTimeout(() => {
+                const savedAdminKey = sessionStorage.getItem('lvl_admin_key');
+                if(savedAdminKey) {
+                    tempAdminKey = savedAdminKey;
+                    // Auto login if session exists (assume pin verified before)
+                    document.getElementById('loginStep1').classList.add('hidden');
+                    document.getElementById('loginStep2').classList.remove('hidden');
+                }
+            }, 500);
+
+            // ==========================================
+            // DATA LOADING
+            // ==========================================
+            window.loadData = async (btnElem) => {
+                if(btnElem) {
+                    const icon = btnElem.querySelector('.refresh-icon');
+                    const text = btnElem.querySelector('.refresh-text');
+                    if(icon) icon.classList.add('fa-spin');
+                    if(text) text.innerText = "[ ACTUALISATION... ]";
+                    
+                    setTimeout(() => {
+                        if(icon) icon.classList.remove('fa-spin');
+                        if(text) text.innerText = "[ RAFRAÎCHIR ]";
+                        showToast("Données synchronisées", "success");
+                    }, 1000);
+                }
+                
+                fetchSystemConfig();
+                fetchGeoRestrictions();
+                fetchUsers();
+            };
+
+            async function fetchSystemConfig() {
+                try {
+                    const docSnap = await getDoc(doc(db, "artifacts", appId, "system", "config"));
+                    if(docSnap.exists()) systemConfig = { ...systemConfig, ...docSnap.data() };
+                    document.getElementById('maintenanceToggle').checked = systemConfig.maintenance === true;
+                    
+                    // Remplissage du Prompt Global s'il existe
+                    const promptInput = document.getElementById('globalPromptInput');
+                    if(promptInput) promptInput.value = systemConfig.global_prompt || "";
+                    
+                    renderApiKeys();
+                } catch(e) { console.error("Config fetch error", e); }
+            }
+
+            async function fetchGeoRestrictions() {
+                try {
+                    const docSnap = await getDoc(doc(db, "artifacts", appId, "system", "restrictions"));
+                    if(docSnap.exists()) {
+                        geoRestrictions = { countries: {}, continents: {}, ...docSnap.data() };
+                    }
+                } catch(e) { console.error("Geo fetch error", e); }
+            }
+
+            async function fetchUsers() {
+                try {
+                    const secSnap = await getDocs(collectionGroup(db, 'security'));
+                    globalSecurity = [];
+                    secSnap.forEach(d => globalSecurity.push({ docId: d.id, path: d.ref.path, ...d.data() }));
+
+                    onSnapshot(collection(db, "artifacts", appId, "public", "data", "users_status"), (snap) => {
+                        globalUsers = [];
+                        let onlineCount = 0;
+                        let installedCount = 0;
+                        const now = Date.now();
+
+                        snap.forEach(d => {
+                            const u = d.data();
+                            u.uid = d.id;
+                            if (u.isOnline && (now - u.lastSeen < 120000)) onlineCount++;
+                            if (u.isInstalled === true) installedCount++;
+                            globalUsers.push(u);
+                        });
+
+                        const elTotal = document.getElementById('statTotalUsers');
+                        const elOnline = document.getElementById('statOnlineUsers');
+                        const elInstalled = document.getElementById('statInstalledUsers');
+                        const elKeys = document.getElementById('statTotalKeys');
+                        
+                        if(elTotal) elTotal.innerText = globalUsers.length;
+                        if(elOnline) elOnline.innerText = onlineCount;
+                        if(elInstalled) elInstalled.innerText = installedCount;
+                        if(elKeys) elKeys.innerText = globalSecurity.length;
+                        
+                        renderUsersGrid();
+                        populateBroadcastTargets();
+                    });
+                } catch(e) { console.error("Users fetch error", e); }
+            }
+
+            function renderUsersGrid() {
+                const grid = document.getElementById('usersGrid');
+                if(!grid) return;
+                grid.innerHTML = '';
+                const search = document.getElementById('userSearchInput').value.toLowerCase();
+
+                globalUsers.forEach(u => {
+                    const sec = globalSecurity.find(s => s.uid === u.uid) || {};
+                    const nameStr = (u.userName || sec.name || 'Inconnu');
+                    const emailStr = (u.userEmail || sec.owner || 'N/A');
+                    const keyStr = (sec.key || '---');
+                    
+                    if (search && !nameStr.toLowerCase().includes(search) && !emailStr.toLowerCase().includes(search) && !keyStr.toLowerCase().includes(search)) return;
+
+                    const isBanned = sec.isDisabled === true;
+                    const isOnline = u.isOnline && (Date.now() - u.lastSeen < 120000);
+                    
+                    const cardTheme = isBanned ? 'border-red-500/50 bg-red-950/20' : (isOnline ? 'border-green-500/30 bg-green-950/10' : 'border-white/10 bg-black/40');
+                    const indicator = isBanned ? '<i class="fas fa-skull text-red-500"></i>' : (isOnline ? '<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-slate-600"></div>');
+
+                    const locCity = u.city || 'Inconnue';
+                    const locCountry = u.country || 'Inconnu';
+                    const flag = getFlagForCountry(locCountry);
+
+                    const card = document.createElement('div');
+                    card.className = `p-4 md:p-5 rounded-2xl border ${cardTheme} flex flex-col relative overflow-hidden transition-all hover:scale-105 cursor-pointer`;
+                    card.onclick = () => window.openUserModal(u.uid);
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4 shrink-0">
+                            <div class="flex items-center gap-2">${indicator}</div>
+                            <span class="text-[9px] font-mono text-slate-500">${keyStr}</span>
+                        </div>
+                        <div class="flex-1 mb-2 pointer-events-none">
+                            <h4 class="font-bold text-white text-sm truncate mb-1">${nameStr}</h4>
+                            <p class="text-[10px] text-slate-400 font-mono truncate mb-3">${emailStr}</p>
+                            <div class="text-[9px] text-slate-300 font-mono truncate bg-black/60 px-2 py-1.5 rounded inline-block max-w-full border border-white/5">
+                                ${flag} ${locCity}, ${locCountry}
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+            document.getElementById('userSearchInput').addEventListener('input', renderUsersGrid);
+
+
+            // ==========================================
+            // BLOCUS LOGIC
+            // ==========================================
+            window.openContinent = (continentName) => {
+                const s1 = document.getElementById('blocus-step-1');
+                const s2 = document.getElementById('blocus-step-2');
+                
+                document.getElementById('countrySearchInput').dataset.continent = continentName;
+                document.getElementById('countrySearchInput').value = '';
+                renderCountriesForContinent(continentName, '');
+
+                s1.classList.add('-translate-x-full', 'opacity-0', 'pointer-events-none');
+                s2.classList.remove('translate-x-full', 'opacity-0', 'pointer-events-none');
+            };
+
+            function renderCountriesForContinent(continentName, search) {
+                const grid = document.getElementById('countriesGrid');
+                grid.innerHTML = '';
+                
+                if (GEO_DATA[continentName]) {
+                    let banCount = 0;
+                    GEO_DATA[continentName].forEach(c => {
+                        const rInfo = geoRestrictions.countries[c.name] || {};
+                        const isBanned = rInfo.banned === true;
+                        if(isBanned) banCount++;
+
+                        if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return;
+
+                        const statusIndicator = isBanned ? '<div class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_red]"></div>' : '<div class="w-2 h-2 rounded-full bg-slate-700"></div>';
+
+                        grid.innerHTML += `
+                            <div class="glass-card border-orange-500/20 p-4 rounded-2xl flex items-center justify-between group" onclick="openCountryConfig('${continentName}', '${c.name}')">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-3xl">${c.emoji}</span>
+                                    <span class="text-white font-bold text-sm tracking-wide group-hover:text-orange-400 transition-colors">${c.name}</span>
+                                </div>
+                                ${statusIndicator}
+                            </div>
+                        `;
+                    });
+
+                    // Update Toggle Continent Switch
+                    const toggleSwitch = document.getElementById('continentBanToggle');
+                    const toggleLabel = document.getElementById('continentToggleLabel');
+                    const isMajorityBanned = banCount > (GEO_DATA[continentName].length / 2);
+                    
+                    if(toggleSwitch) toggleSwitch.checked = isMajorityBanned;
+                    if(toggleLabel) {
+                        toggleLabel.innerText = isMajorityBanned ? "CONTINENT FERMÉ" : "FERMER CONTINENT";
+                        toggleLabel.className = isMajorityBanned ? "text-red-500 font-mono text-[10px] font-bold uppercase tracking-widest" : "text-slate-400 font-mono text-[10px] font-bold uppercase tracking-widest";
+                    }
+                }
+            }
+
+            document.getElementById('countrySearchInput').addEventListener('input', (e) => {
+                const continent = e.target.dataset.continent;
+                renderCountriesForContinent(continent, e.target.value);
+            });
+
+            // LOGIQUE DE BASCULE DU CONTINENT RÉPARÉE
+            const continentBanToggle = document.getElementById('continentBanToggle');
+            if (continentBanToggle) {
+                continentBanToggle.addEventListener('change', async (e) => {
+                    const checkboxElement = e.target;
+                    const continent = document.getElementById('countrySearchInput').dataset.continent;
+                    
+                    if(!continent || !GEO_DATA[continent]) {
+                        checkboxElement.checked = !checkboxElement.checked;
+                        return;
+                    }
+                    
+                    const isBanning = checkboxElement.checked;
+                    const actionText = isBanning ? "DÉSACTIVER (Fermer)" : "RÉACTIVER (Ouvrir)";
+                    
+                    if(confirm(`⚠️ Voulez-vous vraiment ${actionText} tout le continent ${continent} ?`)) {
+                        const label = document.getElementById('continentToggleLabel');
+                        if(label) {
+                            label.innerText = "TRAITEMENT...";
+                            label.classList.add('animate-pulse');
+                        }
+                        
+                        if (!geoRestrictions.countries) geoRestrictions.countries = {};
+                        
+                        GEO_DATA[continent].forEach(c => {
+                            if (!geoRestrictions.countries[c.name]) {
+                                geoRestrictions.countries[c.name] = { banned: isBanning, bannedCities: [], disabledModes: [], banMessage: "", banIcon: "warning", customAppName: "" };
+                            } else {
+                                geoRestrictions.countries[c.name].banned = isBanning;
+                            }
+                        });
+
+                        try {
+                            await setDoc(doc(db, "artifacts", appId, "system", "restrictions"), geoRestrictions, {merge: true});
+                            showToast(`CONTINENT ${isBanning ? 'FERMÉ' : 'OUVERT'} !`, "success");
+                            console.log(`[ACTION] Le continent ${continent} a été ${isBanning ? 'fermé' : 'ouvert'}.`);
+                            renderCountriesForContinent(continent, document.getElementById('countrySearchInput').value);
+                        } catch(err) { 
+                            showToast("ERREUR DE LIAISON", "error"); 
+                            console.error("Erreur lors de la fermeture du continent:", err);
+                            checkboxElement.checked = !isBanning; // Revert
+                            if(label) label.innerText = isBanning ? "FERMER CONTINENT" : "CONTINENT FERMÉ";
+                        } finally {
+                            if(label) label.classList.remove('animate-pulse');
+                        }
+                    } else {
+                        checkboxElement.checked = !isBanning; // Revert UI if cancelled
+                    }
+                });
+            }
+
+            window.backToStep1 = () => {
+                const s1 = document.getElementById('blocus-step-1');
+                const s2 = document.getElementById('blocus-step-2');
+                s2.classList.add('translate-x-full', 'opacity-0', 'pointer-events-none');
+                s1.classList.remove('-translate-x-full', 'opacity-0', 'pointer-events-none');
+            };
+
+            window.openCountryConfig = (continentName, countryName) => {
+                const s2 = document.getElementById('blocus-step-2');
+                const s3 = document.getElementById('blocus-step-3');
+                
+                const countryObj = GEO_DATA[continentName].find(c => c.name === countryName);
+                if(!countryObj) return;
+
+                currentCountryContext = countryObj; 
+
+                const cData = geoRestrictions.countries[countryName] || { 
+                    banned: false, bannedCities: [], disabledModes: [], banMessage: "", banIcon: "shield", customAppName: "" 
+                };
+
+                document.getElementById('configCountryEmoji').innerText = countryObj.emoji;
+                document.getElementById('configCountryName').innerText = countryObj.name;
+                
+                document.getElementById('countryBanToggle').checked = cData.banned === true;
+                
+                const citiesDiv = document.getElementById('configCitiesList');
+                citiesDiv.innerHTML = '';
+                countryObj.cities.forEach(city => {
+                    const isCityBanned = (cData.bannedCities || []).includes(city);
+                    citiesDiv.innerHTML += `
+                        <div class="flex justify-between items-center bg-black/40 border border-white/5 p-3 rounded-lg">
+                            <span class="text-xs font-mono text-slate-300">${city}</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer toggle-city" data-city="${city}" ${isCityBanned ? 'checked' : ''}>
+                                <div class="w-8 h-4 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-orange-500"></div>
+                            </label>
+                        </div>
+                    `;
+                });
+
+                const disabledModes = cData.disabledModes || [];
+                document.querySelectorAll('.toggle-feature').forEach(t => { t.checked = disabledModes.includes(t.dataset.feat); });
+
+                document.getElementById('configAppName').value = cData.customAppName || "";
+                document.getElementById('configBanMsg').value = cData.banMessage || "";
+
+                const currentIcon = cData.banIcon || 'shield';
+                document.querySelectorAll('.svg-icon-btn').forEach(btn => {
+                    if(btn.dataset.icon === currentIcon) btn.classList.add('selected');
+                    else btn.classList.remove('selected');
+                });
+
+                s2.classList.add('-translate-x-full', 'opacity-0', 'pointer-events-none');
+                s3.classList.remove('translate-x-full', 'opacity-0', 'pointer-events-none');
+            };
+
+            window.backToStep2 = () => {
+                const s2 = document.getElementById('blocus-step-2');
+                const s3 = document.getElementById('blocus-step-3');
+                s3.classList.add('translate-x-full', 'opacity-0', 'pointer-events-none');
+                s2.classList.remove('-translate-x-full', 'opacity-0', 'pointer-events-none');
+                currentCountryContext = null;
+            };
+
+            document.querySelectorAll('.svg-icon-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    document.querySelectorAll('.svg-icon-btn').forEach(b => b.classList.remove('selected'));
+                    e.currentTarget.classList.add('selected');
+                };
+            });
+
+            document.getElementById('saveCountryConfigBtn').onclick = async () => {
+                if(!currentCountryContext) return;
+                const btn = document.getElementById('saveCountryConfigBtn');
+                btn.innerText = "SAUVEGARDE EN COURS...";
+
+                const cName = currentCountryContext.name;
+                const isBanned = document.getElementById('countryBanToggle').checked;
+                
+                const bannedCities = [];
+                document.querySelectorAll('.toggle-city:checked').forEach(c => bannedCities.push(c.dataset.city));
+
+                const disabledModes = [];
+                document.querySelectorAll('.toggle-feature:checked').forEach(t => disabledModes.push(t.dataset.feat));
+
+                const appName = document.getElementById('configAppName').value.trim();
+                const msg = document.getElementById('configBanMsg').value.trim();
+                const selIconBtn = document.querySelector('.svg-icon-btn.selected');
+                const icon = selIconBtn ? selIconBtn.dataset.icon : 'shield';
+
+                if (!geoRestrictions.countries) geoRestrictions.countries = {};
+                geoRestrictions.countries[cName] = {
+                    banned: isBanned,
+                    bannedCities: bannedCities,
+                    disabledModes: disabledModes,
+                    banMessage: msg,
+                    banIcon: icon,
+                    customAppName: appName
+                };
+
+                try {
+                    await setDoc(doc(db, "artifacts", appId, "system", "restrictions"), geoRestrictions, {merge: true});
+                    showToast("CONFIGURATION APPLIQUÉE", "success");
+                    setTimeout(() => {
+                        backToStep2();
+                        const continent = Object.keys(GEO_DATA).find(k => GEO_DATA[k].some(x => x.name === cName));
+                        if(continent) renderCountriesForContinent(continent, document.getElementById('countrySearchInput').value); 
+                    }, 500);
+                } catch(e) { showToast("ERREUR SAUVEGARDE", "error"); }
+                finally { btn.innerText = "APPLIQUER LA CONFIGURATION"; }
+            };
+
+
+            // ==========================================
+            // OMNIPRESENCE (BROADCAST)
+            // ==========================================
+            function populateBroadcastTargets() {
+                const list = document.getElementById('bcTargetList');
+                if(!list) return;
+                list.innerHTML = '';
+                globalUsers.forEach(u => {
+                    const cName = u.country || 'Inconnu';
+                    const flag = getFlagForCountry(cName);
+                    const isApp = u.isInstalled ? '📱' : '🌐';
+                    
+                    const label = document.createElement('label');
+                    label.className = "flex items-center gap-2 text-xs font-mono text-slate-300 bg-black/40 p-2 rounded border border-white/5 cursor-pointer hover:border-blue-500/50 transition-colors";
+                    label.innerHTML = `
+                        <input type="checkbox" class="bc-user-cb rounded bg-black border-slate-600 text-blue-500 focus:ring-blue-500" value="${u.uid}" checked>
+                        <span class="truncate">${flag} ${isApp} ${u.userName || 'Inconnu'}</span>
+                    `;
+                    list.appendChild(label);
+                });
+            }
+
+            document.getElementById('bcSelectAll').addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                document.querySelectorAll('.bc-user-cb').forEach(cb => cb.checked = isChecked);
+            });
+
+            document.getElementById('sendBroadcastBtn').onclick = async () => {
+                const checkedCbs = document.querySelectorAll('.bc-user-cb:checked');
+                if(checkedCbs.length === 0) { showToast("SÉLECTIONNEZ AU MOINS UNE CIBLE", "error"); return; }
+                
+                const isAllSelected = document.getElementById('bcSelectAll').checked;
+                const targetUids = Array.from(checkedCbs).map(cb => cb.value);
+
+                const emoji = document.getElementById('bcEmoji').value.trim() || "🚨";
+                const title = document.getElementById('bcTitle').value.trim();
+                const msg = document.getElementById('bcMsg').value.trim();
+
+                if(!title || !msg) { showToast("PARAMÈTRES MANQUANTS", "error"); return; }
+                const btn = document.getElementById('sendBroadcastBtn');
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> TRANSFERT MULTIPLE EN COURS...';
+
+                try {
+                    if(isAllSelected && checkedCbs.length === globalUsers.length) {
+                        await addDoc(collection(db, "artifacts", appId, "public", "data", "broadcasts"), {
+                            message: msg, title: title, emoji: emoji, timestamp: Date.now(),
+                            senderName: currentAdmin.name || "SYS_ROOT",
+                            targetUserId: null
+                        });
+                    } else {
+                        const promises = targetUids.map(uid => 
+                            addDoc(collection(db, "artifacts", appId, "public", "data", "broadcasts"), {
+                                message: msg, title: title, emoji: emoji, timestamp: Date.now(),
+                                senderName: currentAdmin.name || "SYS_ROOT",
+                                targetUserId: uid
+                            })
+                        );
+                        await Promise.all(promises);
+                    }
+
+                    showToast("TRANSMISSION TERMINÉE", "success");
+                    document.getElementById('bcTitle').value = ''; document.getElementById('bcMsg').value = '';
+                } catch(e) { showToast("ÉCHEC DU TRANSFERT", "error"); } 
+                finally { btn.innerHTML = 'INITIER LE TRANSFERT'; }
+            };
+
+
+            // ==========================================
+            // NOYAU (CONFIG)
+            // ==========================================
+            function renderApiKeys() {
+                const container = document.getElementById('apiKeysContainer');
+                if(!container) return;
+                container.innerHTML = '';
+                let keys = systemConfig.gemini_api_keys || [];
+                if(!Array.isArray(keys) && systemConfig.gemini_api_key) keys = [systemConfig.gemini_api_key];
+                
+                keys.forEach((k, idx) => {
+                    const masked = k.substring(0, 10) + "..." + k.substring(k.length - 4);
+                    container.innerHTML += `
+                        <div class="flex justify-between items-center bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl font-mono text-sm">
+                            <span class="text-emerald-400">${masked}</span>
+                            <button class="text-emerald-700 hover:text-white" onclick="window.removeApiKey(${idx})"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('addApiKeyBtn').onclick = () => {
+                const val = document.getElementById('newApiKeyInput').value.trim();
+                if(!val) return;
+                if(!Array.isArray(systemConfig.gemini_api_keys)) systemConfig.gemini_api_keys = [];
+                systemConfig.gemini_api_keys.push(val);
+                renderApiKeys();
+                document.getElementById('newApiKeyInput').value = '';
+            };
+
+            window.removeApiKey = (idx) => { systemConfig.gemini_api_keys.splice(idx, 1); renderApiKeys(); };
+
+            document.getElementById('saveConfigBtn').onclick = async () => {
+                const btn = document.getElementById('saveConfigBtn');
+                btn.innerText = "SAUVEGARDE...";
+                systemConfig.maintenance = document.getElementById('maintenanceToggle').checked;
+                
+                try {
+                    await setDoc(doc(db, "artifacts", appId, "system", "config"), systemConfig, {merge: true});
+                    showToast("ÉTAT DU NOYAU SAUVEGARDÉ", "success");
+                } catch(e) { showToast("ERREUR SAUVEGARDE", "error"); } 
+                finally { btn.innerText = "SAUVEGARDER L'ÉTAT DU NOYAU"; }
+            };
+
+            // APP: L'ORACLE (MASTER PROMPT)
+            const savePromptBtn = document.getElementById('saveGlobalPromptBtn');
+            const resetPromptBtn = document.getElementById('resetGlobalPromptBtn');
+
+            if(savePromptBtn) {
+                savePromptBtn.onclick = async () => {
+                    const btn = document.getElementById('saveGlobalPromptBtn');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> GRAVURE...';
+                    
+                    systemConfig.global_prompt = document.getElementById('globalPromptInput').value.trim();
+                    
+                    try {
+                        await setDoc(doc(db, "artifacts", appId, "system", "config"), { global_prompt: systemConfig.global_prompt }, {merge: true});
+                        showToast("DIRECTIVE SUPRÊME SAUVEGARDÉE", "success");
+                    } catch(e) { 
+                        showToast("ERREUR SAUVEGARDE", "error"); 
+                    } finally { 
+                        btn.innerHTML = originalText; 
+                    }
+                };
+            }
+
+            if(resetPromptBtn) {
+                resetPromptBtn.onclick = async () => {
+                    if(confirm("⚠️ ALERTE : Voulez-vous vraiment purger la directive suprême ? L'IA retournera à son état d'origine par défaut.")) {
+                        const btn = document.getElementById('resetGlobalPromptBtn');
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PURGE...';
+                        
+                        systemConfig.global_prompt = "";
+                        document.getElementById('globalPromptInput').value = "";
+                        
+                        try {
+                            await setDoc(doc(db, "artifacts", appId, "system", "config"), { global_prompt: "" }, {merge: true});
+                            showToast("DIRECTIVE PURGÉE. IA RÉINITIALISÉE.", "success");
+                            console.warn("Directive globale purgée par l'administrateur.");
+                        } catch(e) { 
+                            showToast("ERREUR LORS DE LA PURGE", "error"); 
+                            console.error("Erreur de purge de la directive :", e);
+                        } finally { 
+                            btn.innerHTML = originalText; 
+                        }
+                    }
+                };
+            }
+
+
+            // ==========================================
+            // INTERCEPTION DES LOGS DE L'ADMIN OS & ARCHIVES
+            // ==========================================
+            let adminLogsData = [];
+            let currentLogFilter = 'all';
+            let currentLogSource = 'client'; // 'client' or 'admin'
+            let globalLogsData = [];
+
+            const origLog = console.log;
+            const origWarn = console.warn;
+            const origError = console.error;
+
+            console.log = function(...args) {
+                origLog.apply(console, args);
+                adminLogsData.push({ type: 'petit', icon: 'fa-terminal', color: 'blue', title: 'SYS_INFO', desc: args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), user: currentAdmin ? currentAdmin.name : 'ROOT', time: Date.now() });
+                if(currentLogSource === 'admin') renderLogs();
+            };
+            console.warn = function(...args) {
+                origWarn.apply(console, args);
+                adminLogsData.push({ type: 'moyen', icon: 'fa-exclamation-triangle', color: 'yellow', title: 'SYS_WARN', desc: args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), user: currentAdmin ? currentAdmin.name : 'ROOT', time: Date.now() });
+                if(currentLogSource === 'admin') renderLogs();
+            };
+            console.error = function(...args) {
+                origError.apply(console, args);
+                // Utilisation de try-catch pour éviter les crashs sur des objets non-stringifiables
+                const safeArgs = args.map(a => {
+                    try { return typeof a === 'object' ? JSON.stringify(a, Object.getOwnPropertyNames(a)) : a; } 
+                    catch(e) { return String(a); }
+                });
+                adminLogsData.push({ type: 'grand', icon: 'fa-bomb', color: 'red', title: 'SYS_ERR', desc: safeArgs.join(' '), user: currentAdmin ? currentAdmin.name : 'ROOT', time: Date.now() });
+                if(currentLogSource === 'admin') renderLogs();
+            };
+            
+            // CAPTURE GLOBALE DES ERREURS NON GÉRÉES (Crashs fatals)
+            window.addEventListener('error', function(event) {
+                console.error("Global Error:", event.message, "at", event.filename, ":", event.lineno);
+            });
+            window.addEventListener('unhandledrejection', function(event) {
+                console.error("Unhandled Promise Rejection:", event.reason);
+            });
+            
+            console.log("Noyau Administrateur initialisé et prêt.");
+
+            // Écouteur pour la source (Client vs Admin)
+            document.querySelectorAll('.log-source-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.log-source-btn').forEach(b => {
+                        b.classList.remove('active', 'bg-yellow-500/20', 'text-yellow-400', 'border-yellow-500/30', 'shadow-inner');
+                        b.classList.add('text-slate-400', 'border-transparent');
+                    });
+                    const target = e.currentTarget;
+                    target.classList.remove('text-slate-400', 'border-transparent');
+                    target.classList.add('active', 'bg-yellow-500/20', 'text-yellow-400', 'border-yellow-500/30', 'shadow-inner');
+                    
+                    currentLogSource = target.dataset.source;
+                    renderLogs();
+                });
+            });
+
+            // Écouteur pour les filtres de gravité
+            document.querySelectorAll('.log-filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.log-filter-btn').forEach(b => {
+                        b.classList.remove('active', 'bg-white/10', 'text-white', 'shadow-inner');
+                        if(b.dataset.log !== 'all') {
+                            b.className = `log-filter-btn bg-transparent border border-${b.dataset.log==='petit'?'blue':(b.dataset.log==='moyen'?'yellow':'red')}-500/30 text-${b.dataset.log==='petit'?'blue':(b.dataset.log==='moyen'?'yellow':'red')}-400 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase`;
+                        } else {
+                            b.className = `log-filter-btn bg-transparent border border-white/20 text-slate-400 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase`;
+                        }
+                    });
+                    
+                    const target = e.currentTarget;
+                    target.className = "log-filter-btn active bg-white/10 text-white border border-white/20 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase shadow-inner";
+                    currentLogFilter = target.dataset.log;
+                    renderLogs();
+                });
+            });
+
+            window.loadLogs = async (btnElem) => {
+                if(btnElem) {
+                    const icon = btnElem.querySelector('.refresh-icon');
+                    const text = btnElem.querySelector('.refresh-text');
+                    if(icon) icon.classList.add('fa-spin');
+                    if(text) text.innerText = "[ ACTUALISATION... ]";
+                    setTimeout(() => {
+                        if(icon) icon.classList.remove('fa-spin');
+                        if(text) text.innerText = "[ MAJ LOGS ]";
+                    }, 1000);
+                }
+                
+                try {
+                    globalLogsData = [];
+                    
+                    const reportsSnap = await getDocs(query(collection(db, "artifacts", appId, "public", "data", "reports"), orderBy("date", "desc"), limit(30)));
+                    reportsSnap.forEach(d => {
+                        const data = d.data();
+                        globalLogsData.push({ type: 'grand', icon: 'fa-bug', color: 'red', title: `Rapport de Bug (${data.category})`, desc: data.description, user: data.userName, time: data.date });
+                    });
+
+                    const feedbackSnap = await getDocs(query(collection(db, "artifacts", appId, "public", "data", "feedbacks"), orderBy("date", "desc"), limit(30)));
+                    feedbackSnap.forEach(d => {
+                        const data = d.data();
+                        globalLogsData.push({ type: 'moyen', icon: 'fa-star', color: 'yellow', title: `Avis Utilisateur (${data.rating}/5)`, desc: data.comment, user: data.userName, time: data.date });
+                    });
+
+                    globalUsers.forEach(u => {
+                        if (u.lastSeen) {
+                            const cName = u.country || 'Inconnu';
+                            const flag = getFlagForCountry(cName);
+                            globalLogsData.push({ type: 'petit', icon: 'fa-plug', color: 'blue', title: 'Connexion Réseau', desc: `Plateforme: ${u.isInstalled ? 'PWA Mobile' : 'Navigateur Web'} | Localisation: ${flag} ${cName}`, user: u.userName, time: u.lastSeen });
+                        }
+                    });
+
+                    globalLogsData.sort((a, b) => b.time - a.time);
+                    renderLogs();
+
+                } catch(e) {
+                    console.error("Logs error", e);
+                    document.getElementById('logsContainer').innerHTML = '<p class="text-xs text-red-500 font-mono text-center mt-10">Erreur de lecture des Archives.</p>';
+                }
+            };
+
+            function renderLogs() {
+                const container = document.getElementById('logsContainer');
+                if(!container) return;
+                container.innerHTML = '';
+                
+                let sourceData = currentLogSource === 'client' ? globalLogsData : adminLogsData;
+                let filtered = sourceData;
+                
+                if (currentLogFilter !== 'all') {
+                    filtered = sourceData.filter(l => l.type === currentLogFilter);
+                }
+
+                if (filtered.length === 0) {
+                    container.innerHTML = '<p class="text-xs text-slate-500 font-mono text-center mt-10">Aucune archive disponible pour cette sélection.</p>';
+                    return;
+                }
+
+                filtered.slice(0, 50).forEach(log => {
+                    const dStr = new Date(log.time).toLocaleString('fr-FR');
+                    container.innerHTML += `
+                        <div class="bg-black/40 border-l-2 log-${log.type} p-4 rounded-r-xl border-y border-r border-white/5 flex gap-4">
+                            <div class="mt-1 w-6 flex justify-center text-${log.color}-500"><i class="fas ${log.icon} text-lg"></i></div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start mb-1">
+                                    <p class="text-xs font-bold text-white uppercase tracking-widest truncate mr-2">${log.title}</p>
+                                    <p class="text-[9px] text-slate-500 font-mono shrink-0">${dStr}</p>
+                                </div>
+                                <p class="text-xs text-slate-300 font-mono mb-2 break-words whitespace-pre-wrap">${log.desc || '---'}</p>
+                                <p class="text-[9px] text-${log.color}-400 font-bold tracking-widest uppercase">USER: ${log.user || 'Inconnu'}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+        });
+    </script>
+</body>
+</html>

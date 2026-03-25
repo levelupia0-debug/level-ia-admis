@@ -1,7 +1,9 @@
-const CACHE_NAME = 'levelup-admin-os-v1';
+const CACHE_NAME = 'levelup-admin-os-v2';
 const urlsToCache = [
-  './admin_center.html',
-  './manifest.json'
+  './',
+  './index.html',
+  './manifest.json',
+  './icon.svg'
 ];
 
 self.addEventListener('install', event => {

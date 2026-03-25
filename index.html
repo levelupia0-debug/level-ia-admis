@@ -96,6 +96,19 @@
         <span id="toast-msg" class="text-xs font-mono font-bold tracking-widest uppercase">System Msg</span>
     </div>
 
+    <!-- CUSTOM CONFIRM MODAL (LA MODALE PRO QUI REMPLACE LES POPUPS NAVIGATEUR) -->
+    <div id="customConfirmModal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-dark border border-red-500/30 rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center transform transition-all scale-95 opacity-0" id="customConfirmContent">
+            <i id="customConfirmIcon" class="fas fa-exclamation-triangle text-5xl text-red-500 mb-6 glow-text animate-pulse"></i>
+            <h3 id="customConfirmTitle" class="text-xl font-bold text-white uppercase tracking-widest mb-2">Confirmation</h3>
+            <div id="customConfirmMessage" class="text-xs text-slate-400 font-mono mb-8">Êtes-vous sûr de vouloir continuer ?</div>
+            <div class="flex gap-4">
+                <button id="customCancelBtn" class="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all">Annuler</button>
+                <button id="customConfirmBtn" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
     <!-- LOGOUT CONFIRM MODAL -->
     <div id="logoutModal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <div class="glass-dark border border-white/10 rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center transform transition-all scale-95 opacity-0" id="logoutModalContent">
@@ -262,7 +275,6 @@
                 </div>
             </div>
 
-            <!-- NOUVEAU MODULE : L'ORACLE -->
             <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-oracle')">
                 <div class="flex justify-between items-start mb-10">
                     <i class="fas fa-brain text-4xl text-fuchsia-500 group-hover:glow-text transition-all"></i>
@@ -393,7 +405,7 @@
                     <div class="flex items-center gap-3 bg-black/40 border border-red-500/30 px-4 py-2.5 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.1)] w-full md:w-auto justify-between md:justify-start">
                         <span id="continentToggleLabel" class="text-slate-400 font-mono text-[10px] font-bold uppercase tracking-widest">FERMER CONTINENT</span>
                         <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="continentBanToggle" class="sr-only peer">
+                            <input type="checkbox" id="continentBanToggle" class="sr-only peer" onchange="window.handleContinentToggle(this)">
                             <div class="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
                         </label>
                     </div>
@@ -678,8 +690,57 @@
     </div>
 
 
-    <!-- SCRIPT GÉODATA ET LOGIQUE -->
+    <!-- SCRIPT GÉODATA ET LOGIQUE GLOBALE -->
     <script>
+        // === ETAT GLOBAL & VARIABLES SÉCURISÉES ===
+        let currentAdmin = null;
+        let globalUsers = [];
+        let globalSecurity = [];
+        let systemConfig = { maintenance: false, gemini_api_keys: [], admin_pin: "1994", global_prompt: "" };
+        let geoRestrictions = { countries: {}, continents: {} }; 
+        let currentCountryContext = null; 
+
+        // === LOGS GLOBALES ===
+        let adminLogsData = [];
+        let currentLogFilter = 'all';
+        let currentLogSource = 'client'; 
+        let globalLogsData = [];
+
+        // === INTERCEPTION DE LA CONSOLE (AVANT LE CHARGEMENT) ===
+        const origLog = console.log;
+        const origWarn = console.warn;
+        const origError = console.error;
+
+        console.log = function(...args) {
+            origLog.apply(console, args);
+            adminLogsData.push({ type: 'petit', icon: 'fa-terminal', color: 'blue', title: 'SYS_INFO', desc: args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), user: currentAdmin ? currentAdmin.name : 'ROOT', time: Date.now() });
+            if(currentLogSource === 'admin' && typeof window.triggerLogRender === 'function') window.triggerLogRender();
+        };
+        console.warn = function(...args) {
+            origWarn.apply(console, args);
+            adminLogsData.push({ type: 'moyen', icon: 'fa-exclamation-triangle', color: 'yellow', title: 'SYS_WARN', desc: args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), user: currentAdmin ? currentAdmin.name : 'ROOT', time: Date.now() });
+            if(currentLogSource === 'admin' && typeof window.triggerLogRender === 'function') window.triggerLogRender();
+        };
+        console.error = function(...args) {
+            origError.apply(console, args);
+            const safeArgs = args.map(a => {
+                try { return typeof a === 'object' ? JSON.stringify(a, Object.getOwnPropertyNames(a)) : a; } 
+                catch(e) { return String(a); }
+            });
+            adminLogsData.push({ type: 'grand', icon: 'fa-bomb', color: 'red', title: 'SYS_ERR', desc: safeArgs.join(' '), user: currentAdmin ? currentAdmin.name : 'ROOT', time: Date.now() });
+            if(currentLogSource === 'admin' && typeof window.triggerLogRender === 'function') window.triggerLogRender();
+        };
+        
+        window.addEventListener('error', function(event) {
+            console.error("Global Error:", event.message, "at", event.filename, ":", event.lineno);
+        });
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error("Unhandled Promise Rejection:", event.reason);
+        });
+        
+        console.log("Noyau Administrateur initialisé et prêt.");
+
+        // === GÉO DATA & FONCTIONS UTILITAIRES ===
         const GEO_DATA = {
             "Afrique": [
                 { name: "Afrique du Sud", emoji: "🇿🇦", cities: ["Johannesburg", "Le Cap", "Durban", "Pretoria", "Port Elizabeth"] },
@@ -888,11 +949,18 @@
             ]
         };
 
-        // Fonction ultra-robuste pour trouver l'emoji d'un pays
         const getFlagForCountry = (countryName) => {
             if(!countryName) return "🏳️";
             
-            // Dictionnaire pour traduire les noms anglais fréquents renvoyés par les APIs IP
+            let searchName = countryName.toString().trim();
+            
+            if (searchName.length === 2) {
+                const codePoints = searchName.toUpperCase().split('').map(char => 127397 + char.charCodeAt());
+                return String.fromCodePoint(...codePoints);
+            }
+            
+            searchName = searchName.toLowerCase();
+
             const engToFr = {
                 "united states": "États-Unis", "usa": "États-Unis", "united kingdom": "Royaume-Uni", "uk": "Royaume-Uni",
                 "algeria": "Algérie", "morocco": "Maroc", "tunisia": "Tunisie", "germany": "Allemagne",
@@ -901,24 +969,34 @@
                 "switzerland": "Suisse", "belgium": "Belgique", "netherlands": "Pays-Bas", "sweden": "Suède",
                 "turkey": "Turquie", "mexico": "Mexique", "colombia": "Colombie", "argentina": "Argentine",
                 "saudi arabia": "Arabie Saoudite", "uae": "Émirats Arabes Unis", "united arab emirates": "Émirats Arabes Unis",
-                "ivory coast": "Côte d'Ivoire", "senegal": "Sénégal", "cameroon": "Cameroun", "lebanon": "Liban"
+                "ivory coast": "Côte d'Ivoire", "senegal": "Sénégal", "cameroon": "Cameroun", "lebanon": "Liban",
+                "south korea": "Corée du Sud", "north korea": "Corée du Nord", "dr congo": "RDC"
             };
 
-            let searchName = countryName.toLowerCase().trim();
             if (engToFr[searchName]) searchName = engToFr[searchName].toLowerCase();
 
-            // Fonction pour enlever les accents pour une correspondance parfaite
             const removeAccents = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const normalizedSearch = removeAccents(searchName);
 
             for (const continent in GEO_DATA) {
-                const found = GEO_DATA[continent].find(c => 
-                    c.name.toLowerCase() === searchName || 
-                    removeAccents(c.name.toLowerCase()) === normalizedSearch
-                );
+                const found = GEO_DATA[continent].find(c => {
+                    const cNameLower = c.name.toLowerCase();
+                    const cNameNorm = removeAccents(cNameLower);
+                    return cNameLower === searchName || cNameNorm === normalizedSearch || searchName.includes(cNameLower) || searchName.includes(cNameNorm);
+                });
                 if (found) return found.emoji;
             }
-            return "🏳️"; // Drapeau blanc si introuvable
+            return "🏳️";
+        };
+
+        // SECURITE GLOBALE : PROTECTEURS D'AFFICHAGE
+        const setSafeText = (id, text) => { 
+            const el = document.getElementById(id); 
+            if(el) el.innerText = text; 
+        };
+        const setSafeHTML = (id, html) => { 
+            const el = document.getElementById(id); 
+            if(el) el.innerHTML = html; 
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -927,13 +1005,6 @@
 
             const loginScreen = document.getElementById('loginScreen');
             const hubScreen = document.getElementById('hubScreen');
-            
-            let currentAdmin = null;
-            let globalUsers = [];
-            let globalSecurity = [];
-            let systemConfig = { maintenance: false, gemini_api_keys: [], admin_pin: "1994", global_prompt: "" };
-            let geoRestrictions = { countries: {}, continents: {} }; 
-            let currentCountryContext = null; 
 
             // ==========================================
             // MODALS & UI UTILS
@@ -942,7 +1013,9 @@
             function showToast(msg, type = 'info') {
                 const toast = document.getElementById('toast');
                 const icon = document.getElementById('toast-icon');
-                document.getElementById('toast-msg').innerText = msg;
+                if(!toast || !icon) return;
+
+                setSafeText('toast-msg', msg);
                 
                 toast.classList.remove('border-purple-500', 'border-red-500', 'border-green-500');
                 if(type === 'error') { toast.classList.add('border-red-500'); icon.className = 'fas fa-exclamation-triangle text-red-500'; }
@@ -952,6 +1025,62 @@
                 toast.classList.remove('-translate-y-[150%]');
                 setTimeout(() => toast.classList.add('-translate-y-[150%]'), 3000);
             }
+
+            window.showCustomConfirm = (title, message, confirmText, iconClass, colorTheme, onConfirm, onCancel = null) => {
+                setSafeText('customConfirmTitle', title);
+                setSafeHTML('customConfirmMessage', message);
+                setSafeText('customConfirmBtn', confirmText);
+                
+                const content = document.getElementById('customConfirmContent');
+                const iconEl = document.getElementById('customConfirmIcon');
+                const btnEl = document.getElementById('customConfirmBtn');
+                const cancelBtn = document.getElementById('customCancelBtn');
+                const modal = document.getElementById('customConfirmModal');
+                
+                if(!content || !iconEl || !btnEl || !cancelBtn || !modal) return;
+
+                btnEl.className = "flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(0,0,0,0.4)] text-white ";
+                iconEl.className = `fas ${iconClass} text-5xl mb-6 glow-text animate-pulse `;
+                content.className = "glass-dark border rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center transform transition-all scale-95 opacity-0 ";
+
+                if(colorTheme === 'red') {
+                    btnEl.classList.add('bg-red-600', 'hover:bg-red-500');
+                    iconEl.classList.add('text-red-500');
+                    content.classList.add('border-red-500/30');
+                } else if(colorTheme === 'green') {
+                    btnEl.classList.add('bg-green-600', 'hover:bg-green-500');
+                    iconEl.classList.add('text-green-500');
+                    content.classList.add('border-green-500/30');
+                } else {
+                    btnEl.classList.add('bg-blue-600', 'hover:bg-blue-500');
+                    iconEl.classList.add('text-blue-500');
+                    content.classList.add('border-blue-500/30');
+                }
+
+                modal.classList.remove('hidden');
+                setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); }, 10);
+
+                const newBtn = btnEl.cloneNode(true);
+                btnEl.parentNode.replaceChild(newBtn, btnEl);
+                newBtn.onclick = () => {
+                    window.closeCustomConfirm();
+                    if(onConfirm) onConfirm();
+                };
+
+                const newCancelBtn = cancelBtn.cloneNode(true);
+                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+                newCancelBtn.onclick = () => {
+                    window.closeCustomConfirm();
+                    if(onCancel) onCancel();
+                };
+            };
+
+            window.closeCustomConfirm = () => {
+                const modal = document.getElementById('customConfirmModal');
+                const content = document.getElementById('customConfirmContent');
+                if(content) content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => { if(modal) modal.classList.add('hidden'); }, 200);
+            };
 
             let modalTargetUser = null;
             let modalTargetSecPath = null;
@@ -969,88 +1098,107 @@
                 const flag = getFlagForCountry(cName);
                 const avatarUrl = `https://ui-avatars.com/api/?name=${u.userName || sec.name || 'U'}&background=1e293b&color=fff`;
 
-                document.getElementById('modalUserAvatar').innerHTML = `<img src="${avatarUrl}" class="w-full h-full rounded-xl object-cover">`;
-                document.getElementById('modalUserName').innerText = u.userName || sec.name || 'Inconnu';
-                document.getElementById('modalUserEmail').innerText = u.userEmail || sec.owner || 'N/A';
-                document.getElementById('modalUserLocation').innerHTML = `${flag} ${u.city || '?'}, ${cName}`;
-                document.getElementById('modalUserKey').innerText = sec.key || '---';
+                setSafeHTML('modalUserAvatar', `<img src="${avatarUrl}" class="w-full h-full rounded-xl object-cover">`);
+                setSafeText('modalUserName', u.userName || sec.name || 'Inconnu');
+                setSafeText('modalUserEmail', u.userEmail || sec.owner || 'N/A');
+                setSafeHTML('modalUserLocation', `${flag} ${u.city || '?'}, ${cName}`);
+                setSafeText('modalUserKey', sec.key || '---');
 
                 const platformBadge = document.getElementById('modalUserPlatform');
-                if (u.isInstalled === true) {
-                    platformBadge.innerHTML = `<i class="fas fa-mobile-alt text-blue-400 text-lg"></i> <span class="text-blue-300">APP INSTALLÉE (PWA)</span>`;
-                    platformBadge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest border border-blue-500/30 bg-blue-500/10";
-                } else {
-                    platformBadge.innerHTML = `<i class="fas fa-globe text-slate-400 text-lg"></i> <span class="text-slate-300">NAVIGATEUR WEB</span>`;
-                    platformBadge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest border border-slate-500/30 bg-slate-500/10";
+                if(platformBadge) {
+                    if (u.isInstalled === true) {
+                        platformBadge.innerHTML = `<i class="fas fa-mobile-alt text-blue-400 text-lg"></i> <span class="text-blue-300">APP INSTALLÉE (PWA)</span>`;
+                        platformBadge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest border border-blue-500/30 bg-blue-500/10";
+                    } else {
+                        platformBadge.innerHTML = `<i class="fas fa-globe text-slate-400 text-lg"></i> <span class="text-slate-300">NAVIGATEUR WEB</span>`;
+                        platformBadge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest border border-slate-500/30 bg-slate-500/10";
+                    }
                 }
 
                 const banBtn = document.getElementById('modalBanBtn');
-                if(isBanned) {
-                    banBtn.innerHTML = "[ RÉANIMER LE COMPTE ]";
-                    banBtn.className = "w-full py-4 rounded-xl font-bold font-mono text-[12px] tracking-widest uppercase transition-all bg-green-600/20 text-green-400 border border-green-500 hover:bg-green-600 hover:text-white shadow-[0_0_20px_rgba(34,197,94,0.2)]";
-                } else {
-                    banBtn.innerHTML = "[ BANNIR LE COMPTE ]";
-                    banBtn.className = "w-full py-4 rounded-xl font-bold font-mono text-[12px] tracking-widest uppercase transition-all bg-red-600/20 text-red-400 border border-red-500 hover:bg-red-600 hover:text-white shadow-[0_0_20px_rgba(239,68,68,0.2)]";
+                if(banBtn) {
+                    if(isBanned) {
+                        banBtn.innerHTML = "[ RÉANIMER LE COMPTE ]";
+                        banBtn.className = "w-full py-4 rounded-xl font-bold font-mono text-[12px] tracking-widest uppercase transition-all bg-green-600/20 text-green-400 border border-green-500 hover:bg-green-600 hover:text-white shadow-[0_0_20px_rgba(34,197,94,0.2)]";
+                    } else {
+                        banBtn.innerHTML = "[ BANNIR LE COMPTE ]";
+                        banBtn.className = "w-full py-4 rounded-xl font-bold font-mono text-[12px] tracking-widest uppercase transition-all bg-red-600/20 text-red-400 border border-red-500 hover:bg-red-600 hover:text-white shadow-[0_0_20px_rgba(239,68,68,0.2)]";
+                    }
                 }
                 
                 const modal = document.getElementById('userModal');
                 const content = document.getElementById('userModalContent');
-                modal.classList.remove('hidden');
-                setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); }, 10);
+                if(modal && content) {
+                    modal.classList.remove('hidden');
+                    setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); }, 10);
+                }
             };
 
             window.closeUserModal = () => {
                 const modal = document.getElementById('userModal');
                 const content = document.getElementById('userModalContent');
-                content.classList.add('scale-95', 'opacity-0');
-                setTimeout(() => { modal.classList.add('hidden'); }, 200);
+                if(content) content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => { if(modal) modal.classList.add('hidden'); }, 200);
             };
 
-            document.getElementById('modalBanBtn').onclick = async () => {
-                if(!modalTargetSecPath) { showToast("Cible Introuvable (Pas de doc sécu)", "error"); return; }
-                const sec = globalSecurity.find(x => x.path === modalTargetSecPath);
-                const isBanned = sec.isDisabled === true;
-                
-                if(confirm(isBanned ? "Pardonner cette cible ?" : "Anéantir cet accès ?")) {
-                    try {
-                        await updateDoc(doc(db, modalTargetSecPath), { isDisabled: !isBanned });
-                        showToast("JUGEMENT EXÉCUTÉ", "success");
-                        closeUserModal();
-                        fetchUsers(); 
-                    } catch(err) { showToast("Échec critique", "error"); }
-                }
-            };
+            const modalBanBtn = document.getElementById('modalBanBtn');
+            if (modalBanBtn) {
+                modalBanBtn.onclick = async () => {
+                    if(!modalTargetSecPath) { showToast("Cible Introuvable (Pas de doc sécu)", "error"); return; }
+                    const sec = globalSecurity.find(x => x.path === modalTargetSecPath);
+                    const isBanned = sec.isDisabled === true;
+                    
+                    const actionTitle = isBanned ? "Pardonner cette cible ?" : "Anéantir cet accès ?";
+                    const actionMsg = isBanned ? "Ce compte retrouvera l'accès au système." : "Ce compte sera banni et déconnecté de force.";
+                    const actionBtn = isBanned ? "RÉANIMER" : "BANNIR";
+                    const actionTheme = isBanned ? "green" : "red";
+                    const actionIcon = isBanned ? "fa-user-check" : "fa-skull";
+
+                    window.showCustomConfirm(actionTitle, actionMsg, actionBtn, actionIcon, actionTheme, async () => {
+                        try {
+                            await updateDoc(doc(db, modalTargetSecPath), { isDisabled: !isBanned });
+                            showToast("JUGEMENT EXÉCUTÉ", "success");
+                            closeUserModal();
+                            fetchUsers(); 
+                        } catch(err) { showToast("Échec critique", "error"); }
+                    });
+                };
+            }
 
             window.openLogoutModal = () => {
                 const modal = document.getElementById('logoutModal');
                 const content = document.getElementById('logoutModalContent');
-                modal.classList.remove('hidden');
-                setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); }, 10);
+                if(modal && content) {
+                    modal.classList.remove('hidden');
+                    setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); }, 10);
+                }
             };
 
             window.closeLogoutModal = () => {
                 const modal = document.getElementById('logoutModal');
                 const content = document.getElementById('logoutModalContent');
-                content.classList.add('scale-95', 'opacity-0');
-                setTimeout(() => { modal.classList.add('hidden'); }, 200);
+                if(content) content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => { if(modal) modal.classList.add('hidden'); }, 200);
             };
 
-            document.getElementById('confirmLogoutBtn').onclick = () => {
-                sessionStorage.removeItem('lvl_admin_key');
-                window.location.reload();
-            };
+            const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+            if (confirmLogoutBtn) {
+                confirmLogoutBtn.onclick = () => {
+                    sessionStorage.removeItem('lvl_admin_key');
+                    window.location.reload();
+                };
+            }
 
             window.openStatList = (type) => {
-                const titleEl = document.getElementById('statListTitle');
-                const countEl = document.getElementById('statListCount');
                 const container = document.getElementById('statListContainer');
+                if(!container) return;
                 
                 const now = Date.now();
                 container.innerHTML = '';
 
                 if (type === 'keys') {
-                    titleEl.innerText = "Clés Générées";
-                    countEl.innerText = `${globalSecurity.length} Clé(s) au total`;
+                    setSafeText('statListTitle', "Clés Générées");
+                    setSafeText('statListCount', `${globalSecurity.length} Clé(s) au total`);
                     
                     globalSecurity.forEach(sec => {
                         const u = globalUsers.find(user => user.uid === sec.uid) || {};
@@ -1082,11 +1230,11 @@
                     });
                 } else {
                     let filtered = [];
-                    if (type === 'all') { titleEl.innerText = "Tous les Utilisateurs"; filtered = globalUsers; } 
-                    else if (type === 'online') { titleEl.innerText = "Utilisateurs En Ligne"; filtered = globalUsers.filter(u => u.isOnline && (now - u.lastSeen < 120000)); } 
-                    else if (type === 'installed') { titleEl.innerText = "Installations (PWA)"; filtered = globalUsers.filter(u => u.isInstalled === true); }
+                    if (type === 'all') { setSafeText('statListTitle', "Tous les Utilisateurs"); filtered = globalUsers; } 
+                    else if (type === 'online') { setSafeText('statListTitle', "Utilisateurs En Ligne"); filtered = globalUsers.filter(u => u.isOnline && (now - u.lastSeen < 120000)); } 
+                    else if (type === 'installed') { setSafeText('statListTitle', "Installations (PWA)"); filtered = globalUsers.filter(u => u.isInstalled === true); }
 
-                    countEl.innerText = `${filtered.length} Résultat(s) Piste(s)`;
+                    setSafeText('statListCount', `${filtered.length} Résultat(s) Piste(s)`);
                     
                     filtered.forEach(u => {
                         const cName = u.country || 'Inconnu';
@@ -1116,27 +1264,30 @@
 
                 const modal = document.getElementById('statListModal');
                 const content = document.getElementById('statListModalContent');
-                modal.classList.remove('hidden');
-                setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); }, 10);
+                if(modal && content) {
+                    modal.classList.remove('hidden');
+                    setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); }, 10);
+                }
             };
 
             window.closeStatListModal = () => {
                 const modal = document.getElementById('statListModal');
                 const content = document.getElementById('statListModalContent');
-                content.classList.add('scale-95', 'opacity-0');
-                setTimeout(() => { modal.classList.add('hidden'); }, 200);
+                if(content) content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => { if(modal) modal.classList.add('hidden'); }, 200);
             };
 
             window.openApp = (appId) => {
-                hubScreen.classList.add('hidden');
+                if(hubScreen) hubScreen.classList.add('hidden');
                 document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
-                document.getElementById(appId).classList.remove('hidden');
+                const a = document.getElementById(appId);
+                if(a) a.classList.remove('hidden');
                 if (appId === 'app-archives') loadLogs();
             };
 
             window.backToHub = () => {
                 document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
-                hubScreen.classList.remove('hidden');
+                if(hubScreen) hubScreen.classList.remove('hidden');
             };
 
             // ==========================================
@@ -1162,93 +1313,104 @@
                 });
             }
 
-            document.getElementById('nextStepBtn').onclick = async () => {
-                const key = document.getElementById('adminKeyInput').value.trim().toUpperCase();
-                if(!key) return;
-                
-                const btn = document.getElementById('nextStepBtn');
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                const errEl = document.getElementById('loginError');
-                errEl.classList.add('hidden');
+            const nextStepBtn = document.getElementById('nextStepBtn');
+            if(nextStepBtn) {
+                nextStepBtn.onclick = async () => {
+                    const key = document.getElementById('adminKeyInput').value.trim().toUpperCase();
+                    if(!key) return;
+                    
+                    const btn = document.getElementById('nextStepBtn');
+                    if(btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    const errEl = document.getElementById('loginError');
+                    if(errEl) errEl.classList.add('hidden');
 
-                const keyFormatRegex = /^(LVL|THB)-[A-Z0-9]{3,6}-[A-Z0-9]{3,6}$/;
-                if (!keyFormatRegex.test(key)) {
-                    errEl.innerText = "> FORMAT DE CLÉ INVALIDE.";
-                    errEl.classList.remove('hidden');
-                    btn.innerHTML = 'SUIVANT <i class="fas fa-arrow-right"></i>';
-                    return;
-                }
-
-                try {
-                    if (!auth.currentUser) await signInAnonymously(auth);
-                    const q = collectionGroup(db, 'security');
-                    const snap = await getDocs(q);
-                    let valid = false;
-                    snap.forEach(d => {
-                        const data = d.data();
-                        if (data.key === key && (data.isAdmin === true || data.role === 'admin')) valid = true;
-                    });
-
-                    if(valid) {
-                        tempAdminKey = key;
-                        document.getElementById('loginStep1').classList.add('hidden');
-                        document.getElementById('loginStep2').classList.remove('hidden');
-                    } else {
-                        throw new Error('Invalid Key');
+                    const keyFormatRegex = /^(LVL|THB)-[A-Z0-9]{3,6}-[A-Z0-9]{3,6}$/;
+                    if (!keyFormatRegex.test(key)) {
+                        setSafeText('loginError', "> FORMAT DE CLÉ INVALIDE.");
+                        if(errEl) errEl.classList.remove('hidden');
+                        if(btn) btn.innerHTML = 'SUIVANT <i class="fas fa-arrow-right"></i>';
+                        return;
                     }
-                } catch(e) {
-                    errEl.innerText = "> CLÉ INVALIDE OU ACCÈS REFUSÉ.";
-                    errEl.classList.remove('hidden');
-                }
-                btn.innerHTML = 'SUIVANT <i class="fas fa-arrow-right"></i>';
-            };
 
-            document.getElementById('loginBtn').onclick = async () => {
-                const pin = document.getElementById('adminPinInput').value.trim();
-                const btn = document.getElementById('loginBtn');
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                const errEl = document.getElementById('loginError');
-                errEl.classList.add('hidden');
+                    try {
+                        if (!auth.currentUser) await signInAnonymously(auth);
+                        const q = collectionGroup(db, 'security');
+                        const snap = await getDocs(q);
+                        let valid = false;
+                        snap.forEach(d => {
+                            const data = d.data();
+                            if (data.key === key && (data.isAdmin === true || data.role === 'admin')) valid = true;
+                        });
 
-                try {
-                    const configDoc = await getDoc(doc(db, "artifacts", appId, "system", "config"));
-                    const realPin = configDoc.exists() && configDoc.data().admin_pin ? configDoc.data().admin_pin : "1994";
-                    
-                    if(pin !== realPin) throw new Error('Pin Invalide');
+                        if(valid) {
+                            tempAdminKey = key;
+                            document.getElementById('loginStep1').classList.add('hidden');
+                            document.getElementById('loginStep2').classList.remove('hidden');
+                        } else {
+                            throw new Error('Invalid Key');
+                        }
+                    } catch(e) {
+                        setSafeText('loginError', "> CLÉ INVALIDE OU ACCÈS REFUSÉ.");
+                        if(errEl) errEl.classList.remove('hidden');
+                    }
+                    if(btn) btn.innerHTML = 'SUIVANT <i class="fas fa-arrow-right"></i>';
+                };
+            }
 
-                    const q = collectionGroup(db, 'security');
-                    const snap = await getDocs(q);
-                    let adminFound = null;
-                    snap.forEach(d => {
-                        const data = d.data();
-                        if (data.key === tempAdminKey) adminFound = data;
-                    });
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.onclick = async () => {
+                    const pin = document.getElementById('adminPinInput').value.trim();
+                    const btn = document.getElementById('loginBtn');
+                    if(btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    const errEl = document.getElementById('loginError');
+                    if(errEl) errEl.classList.add('hidden');
 
-                    currentAdmin = adminFound;
-                    sessionStorage.setItem('lvl_admin_key', tempAdminKey);
-                    document.getElementById('adminNameDisplay').innerText = adminFound.name || 'Commandant';
-                    
-                    loginScreen.classList.add('hidden');
-                    hubScreen.classList.remove('hidden');
-                    hubScreen.classList.add('flex');
-                    
-                    showToast('ACCÈS AUTORISÉ AU NOYAU', 'success');
-                    window.loadData(); 
+                    try {
+                        const configDoc = await getDoc(doc(db, "artifacts", appId, "system", "config"));
+                        const realPin = configDoc.exists() && configDoc.data().admin_pin ? configDoc.data().admin_pin : "1994";
+                        
+                        if(pin !== realPin) throw new Error('Pin Invalide');
 
-                } catch(e) {
-                    errEl.innerText = "> CODE PIN INCORRECT.";
-                    errEl.classList.remove('hidden');
-                }
-                btn.innerHTML = '<i class="fas fa-lock-open"></i> DÉVERROUILLER';
-            };
+                        const q = collectionGroup(db, 'security');
+                        const snap = await getDocs(q);
+                        let adminFound = null;
+                        snap.forEach(d => {
+                            const data = d.data();
+                            if (data.key === tempAdminKey) adminFound = data;
+                        });
+
+                        currentAdmin = adminFound;
+                        sessionStorage.setItem('lvl_admin_key', tempAdminKey);
+                        setSafeText('adminNameDisplay', adminFound.name || 'Commandant');
+                        
+                        if(loginScreen) loginScreen.classList.add('hidden');
+                        if(hubScreen) {
+                            hubScreen.classList.remove('hidden');
+                            hubScreen.classList.add('flex');
+                        }
+                        
+                        showToast('ACCÈS AUTORISÉ AU NOYAU', 'success');
+                        window.loadData(); 
+
+                    } catch(e) {
+                        setSafeText('loginError', "> CODE PIN INCORRECT.");
+                        if(errEl) errEl.classList.remove('hidden');
+                    }
+                    if(btn) btn.innerHTML = '<i class="fas fa-lock-open"></i> DÉVERROUILLER';
+                };
+            }
 
             setTimeout(() => {
                 const savedAdminKey = sessionStorage.getItem('lvl_admin_key');
                 if(savedAdminKey) {
                     tempAdminKey = savedAdminKey;
-                    // Auto login if session exists (assume pin verified before)
-                    document.getElementById('loginStep1').classList.add('hidden');
-                    document.getElementById('loginStep2').classList.remove('hidden');
+                    const step1 = document.getElementById('loginStep1');
+                    const step2 = document.getElementById('loginStep2');
+                    if(step1 && step2) {
+                        step1.classList.add('hidden');
+                        step2.classList.remove('hidden');
+                    }
                 }
             }, 500);
 
@@ -1278,9 +1440,10 @@
                 try {
                     const docSnap = await getDoc(doc(db, "artifacts", appId, "system", "config"));
                     if(docSnap.exists()) systemConfig = { ...systemConfig, ...docSnap.data() };
-                    document.getElementById('maintenanceToggle').checked = systemConfig.maintenance === true;
                     
-                    // Remplissage du Prompt Global s'il existe
+                    const mToggle = document.getElementById('maintenanceToggle');
+                    if(mToggle) mToggle.checked = systemConfig.maintenance === true;
+                    
                     const promptInput = document.getElementById('globalPromptInput');
                     if(promptInput) promptInput.value = systemConfig.global_prompt || "";
                     
@@ -1317,15 +1480,10 @@
                             globalUsers.push(u);
                         });
 
-                        const elTotal = document.getElementById('statTotalUsers');
-                        const elOnline = document.getElementById('statOnlineUsers');
-                        const elInstalled = document.getElementById('statInstalledUsers');
-                        const elKeys = document.getElementById('statTotalKeys');
-                        
-                        if(elTotal) elTotal.innerText = globalUsers.length;
-                        if(elOnline) elOnline.innerText = onlineCount;
-                        if(elInstalled) elInstalled.innerText = installedCount;
-                        if(elKeys) elKeys.innerText = globalSecurity.length;
+                        setSafeText('statTotalUsers', globalUsers.length);
+                        setSafeText('statOnlineUsers', onlineCount);
+                        setSafeText('statInstalledUsers', installedCount);
+                        setSafeText('statTotalKeys', globalSecurity.length);
                         
                         renderUsersGrid();
                         populateBroadcastTargets();
@@ -1337,7 +1495,9 @@
                 const grid = document.getElementById('usersGrid');
                 if(!grid) return;
                 grid.innerHTML = '';
-                const search = document.getElementById('userSearchInput').value.toLowerCase();
+                
+                const searchInput = document.getElementById('userSearchInput');
+                const search = searchInput ? searchInput.value.toLowerCase() : '';
 
                 globalUsers.forEach(u => {
                     const sec = globalSecurity.find(s => s.uid === u.uid) || {};
@@ -1376,8 +1536,9 @@
                     grid.appendChild(card);
                 });
             }
-            document.getElementById('userSearchInput').addEventListener('input', renderUsersGrid);
-
+            
+            const userSearchInput = document.getElementById('userSearchInput');
+            if(userSearchInput) userSearchInput.addEventListener('input', renderUsersGrid);
 
             // ==========================================
             // BLOCUS LOGIC
@@ -1386,16 +1547,20 @@
                 const s1 = document.getElementById('blocus-step-1');
                 const s2 = document.getElementById('blocus-step-2');
                 
-                document.getElementById('countrySearchInput').dataset.continent = continentName;
-                document.getElementById('countrySearchInput').value = '';
+                const csi = document.getElementById('countrySearchInput');
+                if(csi) {
+                    csi.dataset.continent = continentName;
+                    csi.value = '';
+                }
                 renderCountriesForContinent(continentName, '');
 
-                s1.classList.add('-translate-x-full', 'opacity-0', 'pointer-events-none');
-                s2.classList.remove('translate-x-full', 'opacity-0', 'pointer-events-none');
+                if(s1) s1.classList.add('-translate-x-full', 'opacity-0', 'pointer-events-none');
+                if(s2) s2.classList.remove('translate-x-full', 'opacity-0', 'pointer-events-none');
             };
 
             function renderCountriesForContinent(continentName, search) {
                 const grid = document.getElementById('countriesGrid');
+                if(!grid) return;
                 grid.innerHTML = '';
                 
                 if (GEO_DATA[continentName]) {
@@ -1420,7 +1585,6 @@
                         `;
                     });
 
-                    // Update Toggle Continent Switch
                     const toggleSwitch = document.getElementById('continentBanToggle');
                     const toggleLabel = document.getElementById('continentToggleLabel');
                     const isMajorityBanned = banCount > (GEO_DATA[continentName].length / 2);
@@ -1433,17 +1597,18 @@
                 }
             }
 
-            document.getElementById('countrySearchInput').addEventListener('input', (e) => {
-                const continent = e.target.dataset.continent;
-                renderCountriesForContinent(continent, e.target.value);
-            });
+            const countrySearchInput = document.getElementById('countrySearchInput');
+            if(countrySearchInput) {
+                countrySearchInput.addEventListener('input', (e) => {
+                    const continent = e.target.dataset.continent;
+                    renderCountriesForContinent(continent, e.target.value);
+                });
+            }
 
-            // LOGIQUE DE BASCULE DU CONTINENT RÉPARÉE
-            const continentBanToggle = document.getElementById('continentBanToggle');
-            if (continentBanToggle) {
-                continentBanToggle.addEventListener('change', async (e) => {
-                    const checkboxElement = e.target;
-                    const continent = document.getElementById('countrySearchInput').dataset.continent;
+            window.handleContinentToggle = async (checkboxElement) => {
+                try {
+                    const searchInp = document.getElementById('countrySearchInput');
+                    const continent = searchInp ? searchInp.dataset.continent : null;
                     
                     if(!continent || !GEO_DATA[continent]) {
                         checkboxElement.checked = !checkboxElement.checked;
@@ -1452,48 +1617,59 @@
                     
                     const isBanning = checkboxElement.checked;
                     const actionText = isBanning ? "DÉSACTIVER (Fermer)" : "RÉACTIVER (Ouvrir)";
+                    const actionTheme = isBanning ? "red" : "green";
+                    const actionIcon = isBanning ? "fa-lock" : "fa-lock-open";
                     
-                    if(confirm(`⚠️ Voulez-vous vraiment ${actionText} tout le continent ${continent} ?`)) {
-                        const label = document.getElementById('continentToggleLabel');
-                        if(label) {
-                            label.innerText = "TRAITEMENT...";
-                            label.classList.add('animate-pulse');
-                        }
-                        
-                        if (!geoRestrictions.countries) geoRestrictions.countries = {};
-                        
-                        GEO_DATA[continent].forEach(c => {
-                            if (!geoRestrictions.countries[c.name]) {
-                                geoRestrictions.countries[c.name] = { banned: isBanning, bannedCities: [], disabledModes: [], banMessage: "", banIcon: "warning", customAppName: "" };
-                            } else {
-                                geoRestrictions.countries[c.name].banned = isBanning;
+                    window.showCustomConfirm(
+                        "Protocole Continental", 
+                        `⚠️ Voulez-vous vraiment <b class="text-${actionTheme}-400">${actionText}</b> tout le continent ${continent} ?`, 
+                        isBanning ? "FERMER" : "OUVRIR", 
+                        actionIcon, 
+                        actionTheme, 
+                        async () => {
+                            const label = document.getElementById('continentToggleLabel');
+                            if(label) {
+                                label.innerText = "TRAITEMENT...";
+                                label.classList.add('animate-pulse');
                             }
-                        });
+                            
+                            if (!geoRestrictions.countries) geoRestrictions.countries = {};
+                            
+                            GEO_DATA[continent].forEach(c => {
+                                if (!geoRestrictions.countries[c.name]) {
+                                    geoRestrictions.countries[c.name] = { banned: isBanning, bannedCities: [], disabledModes: [], banMessage: "", banIcon: "warning", customAppName: "" };
+                                } else {
+                                    geoRestrictions.countries[c.name].banned = isBanning;
+                                }
+                            });
 
-                        try {
-                            await setDoc(doc(db, "artifacts", appId, "system", "restrictions"), geoRestrictions, {merge: true});
-                            showToast(`CONTINENT ${isBanning ? 'FERMÉ' : 'OUVERT'} !`, "success");
-                            console.log(`[ACTION] Le continent ${continent} a été ${isBanning ? 'fermé' : 'ouvert'}.`);
-                            renderCountriesForContinent(continent, document.getElementById('countrySearchInput').value);
-                        } catch(err) { 
-                            showToast("ERREUR DE LIAISON", "error"); 
-                            console.error("Erreur lors de la fermeture du continent:", err);
-                            checkboxElement.checked = !isBanning; // Revert
-                            if(label) label.innerText = isBanning ? "FERMER CONTINENT" : "CONTINENT FERMÉ";
-                        } finally {
-                            if(label) label.classList.remove('animate-pulse');
+                            try {
+                                await setDoc(doc(db, "artifacts", appId, "system", "restrictions"), geoRestrictions, {merge: true});
+                                showToast(`CONTINENT ${isBanning ? 'FERMÉ' : 'OUVERT'} !`, "success");
+                                const ci = document.getElementById('countrySearchInput');
+                                renderCountriesForContinent(continent, ci ? ci.value : '');
+                            } catch(err) { 
+                                showToast("ERREUR DE LIAISON", "error"); 
+                                checkboxElement.checked = !isBanning; 
+                                if(label) label.innerText = isBanning ? "FERMER CONTINENT" : "CONTINENT FERMÉ";
+                            } finally {
+                                if(label) label.classList.remove('animate-pulse');
+                            }
+                        },
+                        () => {
+                            checkboxElement.checked = !isBanning; 
                         }
-                    } else {
-                        checkboxElement.checked = !isBanning; // Revert UI if cancelled
-                    }
-                });
-            }
+                    );
+                } catch(fatalErr) {
+                    checkboxElement.checked = !checkboxElement.checked;
+                }
+            };
 
             window.backToStep1 = () => {
                 const s1 = document.getElementById('blocus-step-1');
                 const s2 = document.getElementById('blocus-step-2');
-                s2.classList.add('translate-x-full', 'opacity-0', 'pointer-events-none');
-                s1.classList.remove('-translate-x-full', 'opacity-0', 'pointer-events-none');
+                if(s2) s2.classList.add('translate-x-full', 'opacity-0', 'pointer-events-none');
+                if(s1) s1.classList.remove('-translate-x-full', 'opacity-0', 'pointer-events-none');
             };
 
             window.openCountryConfig = (continentName, countryName) => {
@@ -1509,31 +1685,36 @@
                     banned: false, bannedCities: [], disabledModes: [], banMessage: "", banIcon: "shield", customAppName: "" 
                 };
 
-                document.getElementById('configCountryEmoji').innerText = countryObj.emoji;
-                document.getElementById('configCountryName').innerText = countryObj.name;
+                setSafeText('configCountryEmoji', countryObj.emoji);
+                setSafeText('configCountryName', countryObj.name);
                 
-                document.getElementById('countryBanToggle').checked = cData.banned === true;
+                const cToggle = document.getElementById('countryBanToggle');
+                if(cToggle) cToggle.checked = cData.banned === true;
                 
                 const citiesDiv = document.getElementById('configCitiesList');
-                citiesDiv.innerHTML = '';
-                countryObj.cities.forEach(city => {
-                    const isCityBanned = (cData.bannedCities || []).includes(city);
-                    citiesDiv.innerHTML += `
-                        <div class="flex justify-between items-center bg-black/40 border border-white/5 p-3 rounded-lg">
-                            <span class="text-xs font-mono text-slate-300">${city}</span>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer toggle-city" data-city="${city}" ${isCityBanned ? 'checked' : ''}>
-                                <div class="w-8 h-4 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-orange-500"></div>
-                            </label>
-                        </div>
-                    `;
-                });
+                if(citiesDiv) {
+                    citiesDiv.innerHTML = '';
+                    countryObj.cities.forEach(city => {
+                        const isCityBanned = (cData.bannedCities || []).includes(city);
+                        citiesDiv.innerHTML += `
+                            <div class="flex justify-between items-center bg-black/40 border border-white/5 p-3 rounded-lg">
+                                <span class="text-xs font-mono text-slate-300">${city}</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer toggle-city" data-city="${city}" ${isCityBanned ? 'checked' : ''}>
+                                    <div class="w-8 h-4 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-orange-500"></div>
+                                </label>
+                            </div>
+                        `;
+                    });
+                }
 
                 const disabledModes = cData.disabledModes || [];
                 document.querySelectorAll('.toggle-feature').forEach(t => { t.checked = disabledModes.includes(t.dataset.feat); });
 
-                document.getElementById('configAppName').value = cData.customAppName || "";
-                document.getElementById('configBanMsg').value = cData.banMessage || "";
+                const confAppName = document.getElementById('configAppName');
+                const confBanMsg = document.getElementById('configBanMsg');
+                if(confAppName) confAppName.value = cData.customAppName || "";
+                if(confBanMsg) confBanMsg.value = cData.banMessage || "";
 
                 const currentIcon = cData.banIcon || 'shield';
                 document.querySelectorAll('.svg-icon-btn').forEach(btn => {
@@ -1541,15 +1722,15 @@
                     else btn.classList.remove('selected');
                 });
 
-                s2.classList.add('-translate-x-full', 'opacity-0', 'pointer-events-none');
-                s3.classList.remove('translate-x-full', 'opacity-0', 'pointer-events-none');
+                if(s2) s2.classList.add('-translate-x-full', 'opacity-0', 'pointer-events-none');
+                if(s3) s3.classList.remove('translate-x-full', 'opacity-0', 'pointer-events-none');
             };
 
             window.backToStep2 = () => {
                 const s2 = document.getElementById('blocus-step-2');
                 const s3 = document.getElementById('blocus-step-3');
-                s3.classList.add('translate-x-full', 'opacity-0', 'pointer-events-none');
-                s2.classList.remove('-translate-x-full', 'opacity-0', 'pointer-events-none');
+                if(s3) s3.classList.add('translate-x-full', 'opacity-0', 'pointer-events-none');
+                if(s2) s2.classList.remove('-translate-x-full', 'opacity-0', 'pointer-events-none');
                 currentCountryContext = null;
             };
 
@@ -1560,46 +1741,53 @@
                 };
             });
 
-            document.getElementById('saveCountryConfigBtn').onclick = async () => {
-                if(!currentCountryContext) return;
-                const btn = document.getElementById('saveCountryConfigBtn');
-                btn.innerText = "SAUVEGARDE EN COURS...";
+            const saveCBtn = document.getElementById('saveCountryConfigBtn');
+            if(saveCBtn) {
+                saveCBtn.onclick = async () => {
+                    if(!currentCountryContext) return;
+                    const btn = document.getElementById('saveCountryConfigBtn');
+                    if(btn) btn.innerText = "SAUVEGARDE EN COURS...";
 
-                const cName = currentCountryContext.name;
-                const isBanned = document.getElementById('countryBanToggle').checked;
-                
-                const bannedCities = [];
-                document.querySelectorAll('.toggle-city:checked').forEach(c => bannedCities.push(c.dataset.city));
+                    const cName = currentCountryContext.name;
+                    const cToggle = document.getElementById('countryBanToggle');
+                    const isBanned = cToggle ? cToggle.checked : false;
+                    
+                    const bannedCities = [];
+                    document.querySelectorAll('.toggle-city:checked').forEach(c => bannedCities.push(c.dataset.city));
 
-                const disabledModes = [];
-                document.querySelectorAll('.toggle-feature:checked').forEach(t => disabledModes.push(t.dataset.feat));
+                    const disabledModes = [];
+                    document.querySelectorAll('.toggle-feature:checked').forEach(t => disabledModes.push(t.dataset.feat));
 
-                const appName = document.getElementById('configAppName').value.trim();
-                const msg = document.getElementById('configBanMsg').value.trim();
-                const selIconBtn = document.querySelector('.svg-icon-btn.selected');
-                const icon = selIconBtn ? selIconBtn.dataset.icon : 'shield';
+                    const confAppName = document.getElementById('configAppName');
+                    const confBanMsg = document.getElementById('configBanMsg');
+                    const appName = confAppName ? confAppName.value.trim() : "";
+                    const msg = confBanMsg ? confBanMsg.value.trim() : "";
+                    const selIconBtn = document.querySelector('.svg-icon-btn.selected');
+                    const icon = selIconBtn ? selIconBtn.dataset.icon : 'shield';
 
-                if (!geoRestrictions.countries) geoRestrictions.countries = {};
-                geoRestrictions.countries[cName] = {
-                    banned: isBanned,
-                    bannedCities: bannedCities,
-                    disabledModes: disabledModes,
-                    banMessage: msg,
-                    banIcon: icon,
-                    customAppName: appName
+                    if (!geoRestrictions.countries) geoRestrictions.countries = {};
+                    geoRestrictions.countries[cName] = {
+                        banned: isBanned,
+                        bannedCities: bannedCities,
+                        disabledModes: disabledModes,
+                        banMessage: msg,
+                        banIcon: icon,
+                        customAppName: appName
+                    };
+
+                    try {
+                        await setDoc(doc(db, "artifacts", appId, "system", "restrictions"), geoRestrictions, {merge: true});
+                        showToast("CONFIGURATION APPLIQUÉE", "success");
+                        setTimeout(() => {
+                            backToStep2();
+                            const continent = Object.keys(GEO_DATA).find(k => GEO_DATA[k].some(x => x.name === cName));
+                            const ci = document.getElementById('countrySearchInput');
+                            if(continent) renderCountriesForContinent(continent, ci ? ci.value : ""); 
+                        }, 500);
+                    } catch(e) { showToast("ERREUR SAUVEGARDE", "error"); }
+                    finally { if(btn) btn.innerText = "APPLIQUER LA CONFIGURATION"; }
                 };
-
-                try {
-                    await setDoc(doc(db, "artifacts", appId, "system", "restrictions"), geoRestrictions, {merge: true});
-                    showToast("CONFIGURATION APPLIQUÉE", "success");
-                    setTimeout(() => {
-                        backToStep2();
-                        const continent = Object.keys(GEO_DATA).find(k => GEO_DATA[k].some(x => x.name === cName));
-                        if(continent) renderCountriesForContinent(continent, document.getElementById('countrySearchInput').value); 
-                    }, 500);
-                } catch(e) { showToast("ERREUR SAUVEGARDE", "error"); }
-                finally { btn.innerText = "APPLIQUER LA CONFIGURATION"; }
-            };
+            }
 
 
             // ==========================================
@@ -1624,49 +1812,61 @@
                 });
             }
 
-            document.getElementById('bcSelectAll').addEventListener('change', (e) => {
-                const isChecked = e.target.checked;
-                document.querySelectorAll('.bc-user-cb').forEach(cb => cb.checked = isChecked);
-            });
+            const bcSelAll = document.getElementById('bcSelectAll');
+            if(bcSelAll) {
+                bcSelAll.addEventListener('change', (e) => {
+                    const isChecked = e.target.checked;
+                    document.querySelectorAll('.bc-user-cb').forEach(cb => cb.checked = isChecked);
+                });
+            }
 
-            document.getElementById('sendBroadcastBtn').onclick = async () => {
-                const checkedCbs = document.querySelectorAll('.bc-user-cb:checked');
-                if(checkedCbs.length === 0) { showToast("SÉLECTIONNEZ AU MOINS UNE CIBLE", "error"); return; }
-                
-                const isAllSelected = document.getElementById('bcSelectAll').checked;
-                const targetUids = Array.from(checkedCbs).map(cb => cb.value);
+            const sBcastBtn = document.getElementById('sendBroadcastBtn');
+            if(sBcastBtn) {
+                sBcastBtn.onclick = async () => {
+                    const checkedCbs = document.querySelectorAll('.bc-user-cb:checked');
+                    if(checkedCbs.length === 0) { showToast("SÉLECTIONNEZ AU MOINS UNE CIBLE", "error"); return; }
+                    
+                    const selAll = document.getElementById('bcSelectAll');
+                    const isAllSelected = selAll ? selAll.checked : false;
+                    const targetUids = Array.from(checkedCbs).map(cb => cb.value);
 
-                const emoji = document.getElementById('bcEmoji').value.trim() || "🚨";
-                const title = document.getElementById('bcTitle').value.trim();
-                const msg = document.getElementById('bcMsg').value.trim();
+                    const emojiEl = document.getElementById('bcEmoji');
+                    const titleEl = document.getElementById('bcTitle');
+                    const msgEl = document.getElementById('bcMsg');
+                    
+                    const emoji = emojiEl ? emojiEl.value.trim() : "🚨";
+                    const title = titleEl ? titleEl.value.trim() : "";
+                    const msg = msgEl ? msgEl.value.trim() : "";
 
-                if(!title || !msg) { showToast("PARAMÈTRES MANQUANTS", "error"); return; }
-                const btn = document.getElementById('sendBroadcastBtn');
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> TRANSFERT MULTIPLE EN COURS...';
+                    if(!title || !msg) { showToast("PARAMÈTRES MANQUANTS", "error"); return; }
+                    const btn = document.getElementById('sendBroadcastBtn');
+                    if(btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> TRANSFERT MULTIPLE EN COURS...';
 
-                try {
-                    if(isAllSelected && checkedCbs.length === globalUsers.length) {
-                        await addDoc(collection(db, "artifacts", appId, "public", "data", "broadcasts"), {
-                            message: msg, title: title, emoji: emoji, timestamp: Date.now(),
-                            senderName: currentAdmin.name || "SYS_ROOT",
-                            targetUserId: null
-                        });
-                    } else {
-                        const promises = targetUids.map(uid => 
-                            addDoc(collection(db, "artifacts", appId, "public", "data", "broadcasts"), {
+                    try {
+                        if(isAllSelected && checkedCbs.length === globalUsers.length) {
+                            await addDoc(collection(db, "artifacts", appId, "public", "data", "broadcasts"), {
                                 message: msg, title: title, emoji: emoji, timestamp: Date.now(),
-                                senderName: currentAdmin.name || "SYS_ROOT",
-                                targetUserId: uid
-                            })
-                        );
-                        await Promise.all(promises);
-                    }
+                                senderName: currentAdmin ? currentAdmin.name : "SYS_ROOT",
+                                targetUserId: null
+                            });
+                        } else {
+                            const promises = targetUids.map(uid => 
+                                addDoc(collection(db, "artifacts", appId, "public", "data", "broadcasts"), {
+                                    message: msg, title: title, emoji: emoji, timestamp: Date.now(),
+                                    senderName: currentAdmin ? currentAdmin.name : "SYS_ROOT",
+                                    targetUserId: uid
+                                })
+                            );
+                            await Promise.all(promises);
+                        }
 
-                    showToast("TRANSMISSION TERMINÉE", "success");
-                    document.getElementById('bcTitle').value = ''; document.getElementById('bcMsg').value = '';
-                } catch(e) { showToast("ÉCHEC DU TRANSFERT", "error"); } 
-                finally { btn.innerHTML = 'INITIER LE TRANSFERT'; }
-            };
+                        showToast("TRANSMISSION TERMINÉE", "success");
+                        if(titleEl) titleEl.value = ''; 
+                        if(msgEl) msgEl.value = '';
+                    } catch(e) { showToast("ÉCHEC DU TRANSFERT", "error"); } 
+                    finally { if(btn) btn.innerHTML = 'INITIER LE TRANSFERT'; }
+                };
+            }
 
 
             // ==========================================
@@ -1690,28 +1890,36 @@
                 });
             }
 
-            document.getElementById('addApiKeyBtn').onclick = () => {
-                const val = document.getElementById('newApiKeyInput').value.trim();
-                if(!val) return;
-                if(!Array.isArray(systemConfig.gemini_api_keys)) systemConfig.gemini_api_keys = [];
-                systemConfig.gemini_api_keys.push(val);
-                renderApiKeys();
-                document.getElementById('newApiKeyInput').value = '';
-            };
+            const aApiKeyBtn = document.getElementById('addApiKeyBtn');
+            if(aApiKeyBtn) {
+                aApiKeyBtn.onclick = () => {
+                    const el = document.getElementById('newApiKeyInput');
+                    const val = el ? el.value.trim() : "";
+                    if(!val) return;
+                    if(!Array.isArray(systemConfig.gemini_api_keys)) systemConfig.gemini_api_keys = [];
+                    systemConfig.gemini_api_keys.push(val);
+                    renderApiKeys();
+                    if(el) el.value = '';
+                };
+            }
 
             window.removeApiKey = (idx) => { systemConfig.gemini_api_keys.splice(idx, 1); renderApiKeys(); };
 
-            document.getElementById('saveConfigBtn').onclick = async () => {
-                const btn = document.getElementById('saveConfigBtn');
-                btn.innerText = "SAUVEGARDE...";
-                systemConfig.maintenance = document.getElementById('maintenanceToggle').checked;
-                
-                try {
-                    await setDoc(doc(db, "artifacts", appId, "system", "config"), systemConfig, {merge: true});
-                    showToast("ÉTAT DU NOYAU SAUVEGARDÉ", "success");
-                } catch(e) { showToast("ERREUR SAUVEGARDE", "error"); } 
-                finally { btn.innerText = "SAUVEGARDER L'ÉTAT DU NOYAU"; }
-            };
+            const sConfigBtn = document.getElementById('saveConfigBtn');
+            if(sConfigBtn) {
+                sConfigBtn.onclick = async () => {
+                    const btn = document.getElementById('saveConfigBtn');
+                    if(btn) btn.innerText = "SAUVEGARDE...";
+                    const mTog = document.getElementById('maintenanceToggle');
+                    systemConfig.maintenance = mTog ? mTog.checked : false;
+                    
+                    try {
+                        await setDoc(doc(db, "artifacts", appId, "system", "config"), systemConfig, {merge: true});
+                        showToast("ÉTAT DU NOYAU SAUVEGARDÉ", "success");
+                    } catch(e) { showToast("ERREUR SAUVEGARDE", "error"); } 
+                    finally { if(btn) btn.innerText = "SAUVEGARDER L'ÉTAT DU NOYAU"; }
+                };
+            }
 
             // APP: L'ORACLE (MASTER PROMPT)
             const savePromptBtn = document.getElementById('saveGlobalPromptBtn');
@@ -1723,7 +1931,8 @@
                     const originalText = btn.innerHTML;
                     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> GRAVURE...';
                     
-                    systemConfig.global_prompt = document.getElementById('globalPromptInput').value.trim();
+                    const pInp = document.getElementById('globalPromptInput');
+                    systemConfig.global_prompt = pInp ? pInp.value.trim() : "";
                     
                     try {
                         await setDoc(doc(db, "artifacts", appId, "system", "config"), { global_prompt: systemConfig.global_prompt }, {merge: true});
@@ -1750,15 +1959,14 @@
                             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PURGE...';
                             
                             systemConfig.global_prompt = "";
-                            document.getElementById('globalPromptInput').value = "";
+                            const pInp = document.getElementById('globalPromptInput');
+                            if(pInp) pInp.value = "";
                             
                             try {
                                 await setDoc(doc(db, "artifacts", appId, "system", "config"), { global_prompt: "" }, {merge: true});
                                 showToast("DIRECTIVE PURGÉE. IA RÉINITIALISÉE.", "success");
-                                console.warn("Directive globale purgée par l'administrateur.");
                             } catch(e) { 
                                 showToast("ERREUR LORS DE LA PURGE", "error"); 
-                                console.error("Erreur de purge de la directive :", e);
                             } finally { 
                                 btn.innerHTML = originalText; 
                             }
@@ -1766,180 +1974,16 @@
                     );
                 };
             }
-
-            // ==========================================
-            // INTERCEPTION DES LOGS DE L'ADMIN OS & ARCHIVES
-            // ==========================================
-            let adminLogsData = [];
-            let currentLogFilter = 'all';
-            let currentLogSource = 'client'; // 'client' or 'admin'
-            let globalLogsData = [];
-
-            const origLog = console.log;
-            const origWarn = console.warn;
-            const origError = console.error;
-
-            console.log = function(...args) {
-                origLog.apply(console, args);
-                adminLogsData.push({ type: 'petit', icon: 'fa-terminal', color: 'blue', title: 'SYS_INFO', desc: args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), user: currentAdmin ? currentAdmin.name : 'ROOT', time: Date.now() });
-                if(currentLogSource === 'admin') renderLogs();
-            };
-            console.warn = function(...args) {
-                origWarn.apply(console, args);
-                adminLogsData.push({ type: 'moyen', icon: 'fa-exclamation-triangle', color: 'yellow', title: 'SYS_WARN', desc: args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' '), user: currentAdmin ? currentAdmin.name : 'ROOT', time: Date.now() });
-                if(currentLogSource === 'admin') renderLogs();
-            };
-            console.error = function(...args) {
-                origError.apply(console, args);
-                // Utilisation de try-catch pour éviter les crashs sur des objets non-stringifiables
-                const safeArgs = args.map(a => {
-                    try { return typeof a === 'object' ? JSON.stringify(a, Object.getOwnPropertyNames(a)) : a; } 
-                    catch(e) { return String(a); }
-                });
-                adminLogsData.push({ type: 'grand', icon: 'fa-bomb', color: 'red', title: 'SYS_ERR', desc: safeArgs.join(' '), user: currentAdmin ? currentAdmin.name : 'ROOT', time: Date.now() });
-                if(currentLogSource === 'admin') renderLogs();
-            };
-            
-            // CAPTURE GLOBALE DES ERREURS NON GÉRÉES (Crashs fatals)
-            window.addEventListener('error', function(event) {
-                console.error("Global Error:", event.message, "at", event.filename, ":", event.lineno);
-            });
-            window.addEventListener('unhandledrejection', function(event) {
-                console.error("Unhandled Promise Rejection:", event.reason);
-            });
-            
-            console.log("Noyau Administrateur initialisé et prêt.");
-
-            // Écouteur pour la source (Client vs Admin)
-            document.querySelectorAll('.log-source-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.log-source-btn').forEach(b => {
-                        b.classList.remove('active', 'bg-yellow-500/20', 'text-yellow-400', 'border-yellow-500/30', 'shadow-inner');
-                        b.classList.add('text-slate-400', 'border-transparent');
-                    });
-                    const target = e.currentTarget;
-                    target.classList.remove('text-slate-400', 'border-transparent');
-                    target.classList.add('active', 'bg-yellow-500/20', 'text-yellow-400', 'border-yellow-500/30', 'shadow-inner');
-                    
-                    currentLogSource = target.dataset.source;
-                    renderLogs();
-                });
-            });
-
-            // Écouteur pour les filtres de gravité
-            document.querySelectorAll('.log-filter-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.log-filter-btn').forEach(b => {
-                        b.classList.remove('active', 'bg-white/10', 'text-white', 'shadow-inner');
-                        if(b.dataset.log !== 'all') {
-                            b.className = `log-filter-btn bg-transparent border border-${b.dataset.log==='petit'?'blue':(b.dataset.log==='moyen'?'yellow':'red')}-500/30 text-${b.dataset.log==='petit'?'blue':(b.dataset.log==='moyen'?'yellow':'red')}-400 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase`;
-                        } else {
-                            b.className = `log-filter-btn bg-transparent border border-white/20 text-slate-400 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase`;
-                        }
-                    });
-                    
-                    const target = e.currentTarget;
-                    target.className = "log-filter-btn active bg-white/10 text-white border border-white/20 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase shadow-inner";
-                    currentLogFilter = target.dataset.log;
-                    renderLogs();
-                });
-            });
-
-            window.loadLogs = async (btnElem) => {
-                if(btnElem) {
-                    const icon = btnElem.querySelector('.refresh-icon');
-                    const text = btnElem.querySelector('.refresh-text');
-                    if(icon) icon.classList.add('fa-spin');
-                    if(text) text.innerText = "[ ACTUALISATION... ]";
-                    setTimeout(() => {
-                        if(icon) icon.classList.remove('fa-spin');
-                        if(text) text.innerText = "[ MAJ LOGS ]";
-                    }, 1000);
-                }
-                
-                try {
-                    globalLogsData = [];
-                    
-                    const reportsSnap = await getDocs(query(collection(db, "artifacts", appId, "public", "data", "reports"), orderBy("date", "desc"), limit(30)));
-                    reportsSnap.forEach(d => {
-                        const data = d.data();
-                        globalLogsData.push({ type: 'grand', icon: 'fa-bug', color: 'red', title: `Rapport de Bug (${data.category})`, desc: data.description, user: data.userName, time: data.date });
-                    });
-
-                    const feedbackSnap = await getDocs(query(collection(db, "artifacts", appId, "public", "data", "feedbacks"), orderBy("date", "desc"), limit(30)));
-                    feedbackSnap.forEach(d => {
-                        const data = d.data();
-                        globalLogsData.push({ type: 'moyen', icon: 'fa-star', color: 'yellow', title: `Avis Utilisateur (${data.rating}/5)`, desc: data.comment, user: data.userName, time: data.date });
-                    });
-
-                    globalUsers.forEach(u => {
-                        if (u.lastSeen) {
-                            const cName = u.country || 'Inconnu';
-                            const flag = getFlagForCountry(cName);
-                            globalLogsData.push({ type: 'petit', icon: 'fa-plug', color: 'blue', title: 'Connexion Réseau', desc: `Plateforme: ${u.isInstalled ? 'PWA Mobile' : 'Navigateur Web'} | Localisation: ${flag} ${cName}`, user: u.userName, time: u.lastSeen });
-                        }
-                    });
-
-                    globalLogsData.sort((a, b) => b.time - a.time);
-                    renderLogs();
-
-                } catch(e) {
-                    console.error("Logs error", e);
-                    document.getElementById('logsContainer').innerHTML = '<p class="text-xs text-red-500 font-mono text-center mt-10">Erreur de lecture des Archives.</p>';
-                }
-            };
-
-            function renderLogs() {
-                const container = document.getElementById('logsContainer');
-                if(!container) return;
-                container.innerHTML = '';
-                
-                let sourceData = currentLogSource === 'client' ? globalLogsData : adminLogsData;
-                let filtered = sourceData;
-                
-                if (currentLogFilter !== 'all') {
-                    filtered = sourceData.filter(l => l.type === currentLogFilter);
-                }
-
-                if (filtered.length === 0) {
-                    container.innerHTML = '<p class="text-xs text-slate-500 font-mono text-center mt-10">Aucune archive disponible pour cette sélection.</p>';
-                    return;
-                }
-
-                filtered.slice(0, 50).forEach(log => {
-                    const dStr = new Date(log.time).toLocaleString('fr-FR');
-                    container.innerHTML += `
-                        <div class="bg-black/40 border-l-2 log-${log.type} p-4 rounded-r-xl border-y border-r border-white/5 flex gap-4">
-                            <div class="mt-1 w-6 flex justify-center text-${log.color}-500"><i class="fas ${log.icon} text-lg"></i></div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex justify-between items-start mb-1">
-                                    <p class="text-xs font-bold text-white uppercase tracking-widest truncate mr-2">${log.title}</p>
-                                    <p class="text-[9px] text-slate-500 font-mono shrink-0">${dStr}</p>
-                                </div>
-                                <p class="text-xs text-slate-300 font-mono mb-2 break-words whitespace-pre-wrap">${log.desc || '---'}</p>
-                                <p class="text-[9px] text-${log.color}-400 font-bold tracking-widest uppercase">USER: ${log.user || 'Inconnu'}</p>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
         });
 
         // ENREGISTREMENT DU SERVICE WORKER (POUR L'INSTALLATION PWA)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // Vérification du protocole : on empêche l'erreur dans les prévisualisations (blob: ou file:)
                 const isSupportedProtocol = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                
                 if (isSupportedProtocol) {
-                    navigator.serviceWorker.register('./sw.js').then(reg => {
-                        console.log('[PWA] Service Worker OS enregistré avec succès.', reg.scope);
-                    }).catch(err => {
-                        console.error('[PWA] Échec de l\'enregistrement du Service Worker OS.', err);
+                    navigator.serviceWorker.register('./sw.js').catch(err => {
+                        console.error('[PWA] Échec de l\'enregistrement.', err);
                     });
-                } else {
-                    console.log('[PWA] Mode aperçu détecté. Le Service Worker sera actif uniquement sur le domaine en ligne (HTTPS).');
                 }
             });
         }

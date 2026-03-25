@@ -9,8 +9,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 576 512'><path fill='%23a855f7' d='M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z'/><circle cx='480' cy='420' r='90' fill='%23020202'/><circle cx='480' cy='420' r='70' fill='%2310b981'/><path d='M440 400 l20 20 l-20 20' stroke='%23020202' stroke-width='15' fill='none' stroke-linecap='round' stroke-linejoin='round'/><line x1='470' y1='440' x2='505' y2='440' stroke='%23020202' stroke-width='15' stroke-linecap='round'/></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 576 512'><rect width='576' height='512' fill='%23020202'/><path fill='%23a855f7' d='M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z'/><circle cx='480' cy='420' r='90' fill='%23020202'/><circle cx='480' cy='420' r='70' fill='%2310b981'/><path d='M440 400 l20 20 l-20 20' stroke='%23020202' stroke-width='15' fill='none' stroke-linecap='round' stroke-linejoin='round'/><line x1='470' y1='440' x2='505' y2='440' stroke='%23020202' stroke-width='15' stroke-linecap='round'/></svg>">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon.svg">
 
     <title>LEVEL IA - OS</title>
     
@@ -69,7 +69,6 @@
         
         .glow-text { text-shadow: 0 0 15px currentColor; }
         
-        /* INVISIBLE SCROLLBAR BUT FULLY FUNCTIONAL */
         .custom-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .custom-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
         
@@ -90,15 +89,19 @@
 </head>
 <body class="h-[100dvh] flex flex-col overflow-hidden selection:bg-purple-500/30 scanline-effect min-h-0">
 
-    <!-- TOAST SYSTEM -->
-    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 transform -translate-y-[150%] transition-transform duration-300 z-[9999] glass-dark border-b-2 text-white px-8 py-3 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.8)] flex items-center gap-3">
+    <!-- ========================================== -->
+    <!-- OVERLAYS & MODALS                          -->
+    <!-- ========================================== -->
+
+    <!-- TOAST SYSTEM (Z-10001) -->
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 transform -translate-y-[150%] transition-transform duration-300 z-[10001] glass-dark border-b-2 text-white px-8 py-3 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.8)] flex items-center gap-3">
         <i class="fas fa-terminal" id="toast-icon"></i>
         <span id="toast-msg" class="text-xs font-mono font-bold tracking-widest uppercase">System Msg</span>
     </div>
 
-    <!-- CUSTOM CONFIRM MODAL (LA MODALE PRO QUI REMPLACE LES POPUPS NAVIGATEUR) -->
-    <div id="customConfirmModal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-        <div class="glass-dark border border-red-500/30 rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center transform transition-all scale-95 opacity-0" id="customConfirmContent">
+    <!-- CUSTOM CONFIRM MODAL (Z-10000) -->
+    <div id="customConfirmModal" class="fixed inset-0 z-[10000] hidden flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+        <div class="glass-dark border border-red-500/30 rounded-3xl w-full max-w-sm p-8 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center transform transition-all scale-95 opacity-0" id="customConfirmContent">
             <i id="customConfirmIcon" class="fas fa-exclamation-triangle text-5xl text-red-500 mb-6 glow-text animate-pulse"></i>
             <h3 id="customConfirmTitle" class="text-xl font-bold text-white uppercase tracking-widest mb-2">Confirmation</h3>
             <div id="customConfirmMessage" class="text-xs text-slate-400 font-mono mb-8">Êtes-vous sûr de vouloir continuer ?</div>
@@ -109,35 +112,23 @@
         </div>
     </div>
 
-    <!-- LOGOUT CONFIRM MODAL -->
-    <div id="logoutModal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <!-- LOGOUT CONFIRM MODAL (Z-10000) -->
+    <div id="logoutModal" class="fixed inset-0 z-[10000] hidden flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
         <div class="glass-dark border border-white/10 rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center transform transition-all scale-95 opacity-0" id="logoutModalContent">
             <i class="fas fa-power-off text-5xl text-red-500 mb-6 glow-text"></i>
             <h3 class="text-xl font-bold text-white uppercase tracking-widest mb-2">Déconnexion</h3>
             <p class="text-xs text-slate-400 font-mono mb-8">Voulez-vous vraiment quitter le Système ?</p>
             <div class="flex gap-4">
-                <button onclick="closeLogoutModal()" class="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all">Annuler</button>
+                <button onclick="window.closeLogoutModal()" class="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all">Annuler</button>
                 <button id="confirmLogoutBtn" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all">Confirmer</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL LISTE UTILISATEURS (STATS) -->
-    <div id="statListModal" class="fixed inset-0 z-[9000] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-        <div class="glass-dark border border-purple-500/30 rounded-3xl w-full max-w-2xl p-6 md:p-8 shadow-[0_0_50px_rgba(168,85,247,0.15)] relative transform transition-all scale-95 opacity-0 flex flex-col max-h-[80vh]" id="statListModalContent">
-            <button onclick="closeStatListModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors text-xl"><i class="fas fa-times"></i></button>
-            <h3 id="statListTitle" class="text-xl font-bold text-white uppercase tracking-widest mb-2 glow-text">LISTE</h3>
-            <p id="statListCount" class="text-xs text-purple-400 font-mono mb-6 uppercase">0 Résultat(s)</p>
-            <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 min-h-0" id="statListContainer">
-                <!-- JS Populated -->
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL UTILISATEUR (DOSSIER CIBLE) -->
+    <!-- MODAL UTILISATEUR / DOSSIER CIBLE (Z-9999) -->
     <div id="userModal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <div class="glass-dark border border-red-500/30 rounded-3xl w-full max-w-lg p-6 md:p-8 shadow-[0_0_50px_rgba(239,68,68,0.15)] relative transform transition-all scale-95 opacity-0" id="userModalContent">
-            <button onclick="closeUserModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors text-xl"><i class="fas fa-times"></i></button>
+            <button onclick="window.closeUserModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors text-xl"><i class="fas fa-times"></i></button>
             <div class="flex items-center gap-4 mb-6 pb-6 border-b border-white/5">
                 <div id="modalUserAvatar" class="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center text-xl shadow-inner">👤</div>
                 <div class="min-w-0">
@@ -167,12 +158,25 @@
         </div>
     </div>
 
-    <!-- LOGIN SCREEN PRO (2 ETAPES) -->
+    <!-- MODAL LISTE UTILISATEURS STATS (Z-9000) -->
+    <div id="statListModal" class="fixed inset-0 z-[9000] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-dark border border-purple-500/30 rounded-3xl w-full max-w-2xl p-6 md:p-8 shadow-[0_0_50px_rgba(168,85,247,0.15)] relative transform transition-all scale-95 opacity-0 flex flex-col max-h-[80vh]" id="statListModalContent">
+            <button onclick="window.closeStatListModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors text-xl"><i class="fas fa-times"></i></button>
+            <h3 id="statListTitle" class="text-xl font-bold text-white uppercase tracking-widest mb-2 glow-text">LISTE</h3>
+            <p id="statListCount" class="text-xs text-purple-400 font-mono mb-6 uppercase">0 Résultat(s)</p>
+            <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 min-h-0" id="statListContainer">
+                <!-- JS Populated -->
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- ÉCRAN DE CONNEXION                         -->
+    <!-- ========================================== -->
     <div id="loginScreen" class="absolute inset-0 z-50 flex items-center justify-center p-4 bg-[#020202]">
         <div class="glass-dark p-10 md:p-12 rounded-3xl w-full max-w-md relative overflow-hidden border-t border-purple-500/50 shadow-[0_0_50px_rgba(168,85,247,0.15)] flex flex-col items-center">
-            
             <i class="fas fa-star text-6xl text-purple-500 mb-6 star-logo glow-text"></i>
-
             <h1 class="text-3xl font-extrabold text-white tracking-[0.3em] uppercase glow-text mb-10">LEVEL IA</h1>
 
             <!-- ETAPE 1 : CLÉ -->
@@ -196,20 +200,23 @@
         </div>
     </div>
 
-    <!-- THE HUB (GRID) -->
+
+    <!-- ========================================== -->
+    <!-- LE HUB PRINCIPAL (MENU)                    -->
+    <!-- ========================================== -->
     <div id="hubScreen" class="hidden flex-1 flex-col p-6 md:p-12 pb-24 relative overflow-y-auto custom-scrollbar min-h-0">
         <header class="flex justify-between items-center mb-12 shrink-0">
             <div>
                 <h2 class="text-3xl md:text-5xl font-extrabold text-white tracking-widest uppercase glow-text">LEVEL IA</h2>
                 <p class="text-xs text-slate-500 font-mono mt-2 tracking-widest uppercase"><i class="fas fa-circle text-green-500 text-[8px] animate-pulse mr-1"></i> Connexion stable • <span id="adminNameDisplay">System</span></p>
             </div>
-            <button onclick="openLogoutModal()" class="text-red-500/50 hover:text-red-500 border border-red-500/20 hover:border-red-500 bg-red-500/5 px-4 py-2 rounded-lg text-[10px] font-mono font-bold uppercase transition-all">
+            <button onclick="window.openLogoutModal()" class="text-red-500/50 hover:text-red-500 border border-red-500/20 hover:border-red-500 bg-red-500/5 px-4 py-2 rounded-lg text-[10px] font-mono font-bold uppercase transition-all">
                 [ EXIT ]
             </button>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 flex-1 content-start min-h-0">
-            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-omniscience')">
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="window.openApp('app-omniscience')">
                 <div class="flex justify-between items-start mb-10">
                     <i class="fas fa-eye text-4xl text-purple-400 group-hover:glow-text transition-all"></i>
                     <span class="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-1 rounded font-mono border border-purple-500/30">MODULE 01</span>
@@ -220,7 +227,7 @@
                 </div>
             </div>
 
-            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-jugement')">
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="window.openApp('app-jugement')">
                 <div class="flex justify-between items-start mb-10">
                     <i class="fas fa-skull text-4xl text-red-500 group-hover:glow-text transition-all"></i>
                     <span class="text-[9px] bg-red-500/20 text-red-300 px-2 py-1 rounded font-mono border border-red-500/30">MODULE 02</span>
@@ -231,7 +238,7 @@
                 </div>
             </div>
 
-            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-blocus')">
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="window.openApp('app-blocus')">
                 <div class="flex justify-between items-start mb-10">
                     <i class="fas fa-globe-crosshairs text-4xl text-orange-500 group-hover:glow-text transition-all"></i>
                     <span class="text-[9px] bg-orange-500/20 text-orange-300 px-2 py-1 rounded font-mono border border-orange-500/30">MODULE 03</span>
@@ -242,7 +249,7 @@
                 </div>
             </div>
 
-            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-omnipresence')">
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="window.openApp('app-omnipresence')">
                 <div class="flex justify-between items-start mb-10">
                     <i class="fas fa-broadcast-tower text-4xl text-blue-400 group-hover:glow-text transition-all"></i>
                     <span class="text-[9px] bg-blue-500/20 text-blue-300 px-2 py-1 rounded font-mono border border-blue-500/30">MODULE 04</span>
@@ -253,7 +260,7 @@
                 </div>
             </div>
 
-            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-noyau')">
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="window.openApp('app-noyau')">
                 <div class="flex justify-between items-start mb-10">
                     <i class="fas fa-microchip text-4xl text-emerald-400 group-hover:glow-text transition-all"></i>
                     <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded font-mono border border-emerald-500/30">MODULE 05</span>
@@ -264,7 +271,7 @@
                 </div>
             </div>
             
-            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-archives')">
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="window.openApp('app-archives')">
                 <div class="flex justify-between items-start mb-10">
                     <i class="fas fa-list-alt text-4xl text-yellow-400 group-hover:glow-text transition-all"></i>
                     <span class="text-[9px] bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded font-mono border border-yellow-500/30">MODULE 06</span>
@@ -275,7 +282,7 @@
                 </div>
             </div>
 
-            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="openApp('app-oracle')">
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="window.openApp('app-oracle')">
                 <div class="flex justify-between items-start mb-10">
                     <i class="fas fa-brain text-4xl text-fuchsia-500 group-hover:glow-text transition-all"></i>
                     <span class="text-[9px] bg-fuchsia-500/20 text-fuchsia-300 px-2 py-1 rounded font-mono border border-fuchsia-500/30">MODULE 07</span>
@@ -285,7 +292,6 @@
                     <p class="text-xs text-slate-400 font-mono">Directive Suprême. Le prompt maître qui contrôle toute l'IA.</p>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -297,32 +303,32 @@
     <div id="app-omniscience" class="app-screen hidden flex-1 flex flex-col bg-[#050010] relative z-40 min-h-0">
         <header class="p-6 border-b border-purple-500/20 flex items-center justify-between glass-dark shrink-0">
             <div class="flex items-center gap-6">
-                <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+                <button onclick="window.backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
                 <h2 class="text-2xl font-bold uppercase tracking-widest text-purple-400 glow-text">Omniscience</h2>
             </div>
-            <button onclick="loadData(this)" class="text-xs font-mono text-purple-500 border border-purple-500/30 px-3 py-1.5 rounded hover:bg-purple-500 hover:text-white transition-all flex items-center gap-2">
+            <button onclick="window.loadData(this)" class="text-xs font-mono text-purple-500 border border-purple-500/30 px-3 py-1.5 rounded hover:bg-purple-500 hover:text-white transition-all flex items-center gap-2">
                 <i class="fas fa-sync-alt refresh-icon"></i> <span class="refresh-text">[ RAFRAÎCHIR ]</span>
             </button>
         </header>
         <div class="flex-1 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar min-h-0">
             <p class="text-[10px] text-purple-500/50 font-mono mb-4 text-center uppercase">Cliquez sur une carte pour explorer les données</p>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 max-w-6xl mx-auto mt-2">
-                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-purple-500/50 transition-all" onclick="openStatList('all')">
+                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-purple-500/50 transition-all" onclick="window.openStatList('all')">
                     <div class="absolute top-0 left-0 w-full h-1 bg-purple-500"></div>
                     <p class="text-[10px] md:text-xs text-slate-500 font-mono uppercase tracking-widest mb-4">Total Utilisateurs</p>
                     <p class="text-4xl md:text-6xl font-black text-white glow-text" id="statTotalUsers">0</p>
                 </div>
-                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-green-500/50 transition-all" onclick="openStatList('online')">
+                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-green-500/50 transition-all" onclick="window.openStatList('online')">
                     <div class="absolute top-0 left-0 w-full h-1 bg-green-500"></div>
                     <p class="text-[10px] md:text-xs text-slate-500 font-mono uppercase tracking-widest mb-4">En Ligne (Actifs)</p>
                     <p class="text-4xl md:text-6xl font-black text-green-400 glow-text" id="statOnlineUsers">0</p>
                 </div>
-                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-blue-500/50 transition-all" onclick="openStatList('installed')">
+                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-blue-500/50 transition-all" onclick="window.openStatList('installed')">
                     <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
                     <p class="text-[10px] md:text-xs text-slate-500 font-mono uppercase tracking-widest mb-4">Installations (PWA)</p>
                     <p class="text-4xl md:text-6xl font-black text-blue-400 glow-text" id="statInstalledUsers">0</p>
                 </div>
-                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-slate-500/50 transition-all" onclick="openStatList('keys')">
+                <div class="text-center p-6 md:p-8 bg-black/40 border border-white/5 rounded-3xl relative overflow-hidden cursor-pointer hover:scale-105 hover:border-slate-500/50 transition-all" onclick="window.openStatList('keys')">
                     <div class="absolute top-0 left-0 w-full h-1 bg-slate-500"></div>
                     <p class="text-[10px] md:text-xs text-slate-500 font-mono uppercase tracking-widest mb-4">Clés Générées</p>
                     <p class="text-4xl md:text-6xl font-black text-slate-400 glow-text" id="statTotalKeys">0</p>
@@ -335,11 +341,11 @@
     <div id="app-jugement" class="app-screen hidden flex-1 flex flex-col bg-[#100000] relative z-40 min-h-0">
         <header class="p-4 md:p-6 border-b border-red-500/20 flex items-center justify-between glass-dark shrink-0">
             <div class="flex items-center gap-4 md:gap-6">
-                <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+                <button onclick="window.backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
                 <h2 class="text-xl md:text-2xl font-bold uppercase tracking-widest text-red-500 glow-text">Le Jugement</h2>
             </div>
             <div class="w-1/2 md:w-1/3 relative flex items-center gap-2">
-                <button onclick="loadData(this)" class="text-red-500 hover:text-white transition-all p-2 rounded-full"><i class="fas fa-sync-alt refresh-icon"></i></button>
+                <button onclick="window.loadData(this)" class="text-red-500 hover:text-white transition-all p-2 rounded-full"><i class="fas fa-sync-alt refresh-icon"></i></button>
                 <div class="relative w-full">
                     <input type="text" id="userSearchInput" placeholder="TRAQUER CIBLE..." class="w-full bg-red-950/20 border border-red-500/30 rounded-full px-4 md:px-6 py-2 text-white font-mono text-[10px] md:text-xs focus:outline-none focus:border-red-500 uppercase tracking-widest placeholder-red-500/30">
                 </div>
@@ -356,7 +362,7 @@
     <!-- 3. BLOCUS GLOBAL -->
     <div id="app-blocus" class="app-screen hidden flex-1 flex flex-col bg-[#100500] relative z-40 min-h-0">
         <header class="p-4 md:p-6 border-b border-orange-500/20 flex items-center gap-4 md:gap-6 glass-dark shrink-0">
-            <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+            <button onclick="window.backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
             <h2 class="text-xl md:text-2xl font-bold uppercase tracking-widest text-orange-500 glow-text" id="blocusTitle">Blocus Global</h2>
         </header>
         
@@ -365,27 +371,27 @@
             <!-- ETAPE 1 : CONTINENTS -->
             <div id="blocus-step-1" class="geo-panel absolute inset-0 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar">
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-6xl mx-auto mt-4">
-                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Afrique')">
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="window.openContinent('Afrique')">
                         <i class="fas fa-earth-africa text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
                         <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Afrique</h3>
                     </div>
-                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Amérique')">
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="window.openContinent('Amérique')">
                         <i class="fas fa-earth-americas text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
                         <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Amérique</h3>
                     </div>
-                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Asie')">
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="window.openContinent('Asie')">
                         <i class="fas fa-earth-asia text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
                         <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Asie</h3>
                     </div>
-                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Moyen-Orient')">
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="window.openContinent('Moyen-Orient')">
                         <i class="fas fa-mosque text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
                         <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Moyen-Orient</h3>
                     </div>
-                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Europe')">
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="window.openContinent('Europe')">
                         <i class="fas fa-earth-europe text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
                         <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Europe</h3>
                     </div>
-                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="openContinent('Océanie')">
+                    <div class="glass-card border-orange-500/20 p-8 rounded-3xl text-center group" onclick="window.openContinent('Océanie')">
                         <i class="fas fa-earth-oceania text-6xl text-orange-500/50 group-hover:text-orange-500 transition-all mb-4"></i>
                         <h3 class="text-2xl font-bold text-white uppercase tracking-widest">Océanie</h3>
                     </div>
@@ -396,7 +402,7 @@
             <div id="blocus-step-2" class="geo-panel absolute inset-0 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar transform translate-x-full opacity-0 pointer-events-none">
                 
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 max-w-7xl mx-auto">
-                    <button onclick="backToStep1()" class="bg-white/5 border border-white/10 text-white px-4 py-2 rounded-xl font-mono text-xs hover:bg-white/10 transition-all"><i class="fas fa-undo mr-2"></i> CONTINENTS</button>
+                    <button onclick="window.backToStep1()" class="bg-white/5 border border-white/10 text-white px-4 py-2 rounded-xl font-mono text-xs hover:bg-white/10 transition-all"><i class="fas fa-undo mr-2"></i> CONTINENTS</button>
                     
                     <div class="flex-1 max-w-md w-full">
                         <input type="text" id="countrySearchInput" placeholder="Rechercher un pays..." class="w-full bg-black/50 border border-orange-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 font-mono">
@@ -419,7 +425,7 @@
             <!-- ETAPE 3 : CONFIG PAYS -->
             <div id="blocus-step-3" class="geo-panel absolute inset-0 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar transform translate-x-full opacity-0 pointer-events-none">
                 <div class="max-w-4xl mx-auto">
-                    <button onclick="backToStep2()" class="bg-white/5 border border-white/10 text-white px-4 py-2 rounded-xl mb-6 font-mono text-xs hover:bg-white/10 transition-all"><i class="fas fa-undo mr-2"></i> RETOUR PAYS</button>
+                    <button onclick="window.backToStep2()" class="bg-white/5 border border-white/10 text-white px-4 py-2 rounded-xl mb-6 font-mono text-xs hover:bg-white/10 transition-all"><i class="fas fa-undo mr-2"></i> RETOUR PAYS</button>
                     
                     <div class="bg-black/60 border border-orange-500/30 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
                         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-600 to-red-600"></div>
@@ -527,7 +533,7 @@
     <!-- 4. OMNIPRESENCE -->
     <div id="app-omnipresence" class="app-screen hidden flex-1 flex flex-col bg-[#000a14] relative z-40 min-h-0">
         <header class="p-6 border-b border-blue-500/20 flex items-center gap-6 glass-dark shrink-0">
-            <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+            <button onclick="window.backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
             <h2 class="text-2xl font-bold uppercase tracking-widest text-blue-400 glow-text">Omniprésence</h2>
         </header>
         <div class="flex-1 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar min-h-0 flex items-start md:items-center justify-center">
@@ -575,7 +581,7 @@
     <!-- 5. NOYAU -->
     <div id="app-noyau" class="app-screen hidden flex-1 flex flex-col bg-[#001005] relative z-40 min-h-0">
         <header class="p-6 border-b border-emerald-500/20 flex items-center gap-6 glass-dark shrink-0">
-            <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+            <button onclick="window.backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
             <h2 class="text-2xl font-bold uppercase tracking-widest text-emerald-400 glow-text">Cœur du Système</h2>
         </header>
         <div class="flex-1 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar min-h-0">
@@ -617,7 +623,7 @@
     <div id="app-archives" class="app-screen hidden flex-1 flex flex-col bg-[#111005] relative z-40 min-h-0">
         <header class="p-6 border-b border-yellow-500/20 flex items-center justify-between glass-dark shrink-0">
             <div class="flex items-center gap-6">
-                <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+                <button onclick="window.backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
                 <h2 class="text-2xl font-bold uppercase tracking-widest text-yellow-400 glow-text">Les Archives</h2>
             </div>
             <button onclick="window.loadLogs(this)" class="text-xs font-mono text-yellow-500 border border-yellow-500/30 px-3 py-1.5 rounded hover:bg-yellow-500 hover:text-black transition-all flex items-center gap-2">
@@ -656,7 +662,7 @@
     <div id="app-oracle" class="app-screen hidden flex-1 flex flex-col bg-[#100010] relative z-40 min-h-0">
         <header class="p-6 border-b border-fuchsia-500/20 flex items-center justify-between glass-dark shrink-0">
             <div class="flex items-center gap-6">
-                <button onclick="backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+                <button onclick="window.backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
                 <h2 class="text-2xl font-bold uppercase tracking-widest text-fuchsia-400 glow-text">L'Oracle</h2>
             </div>
         </header>
@@ -989,7 +995,6 @@
             return "🏳️";
         };
 
-        // SECURITE GLOBALE : PROTECTEURS D'AFFICHAGE
         const setSafeText = (id, text) => { 
             const el = document.getElementById(id); 
             if(el) el.innerText = text; 
@@ -1041,7 +1046,7 @@
 
                 btnEl.className = "flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(0,0,0,0.4)] text-white ";
                 iconEl.className = `fas ${iconClass} text-5xl mb-6 glow-text animate-pulse `;
-                content.className = "glass-dark border rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center transform transition-all scale-95 opacity-0 ";
+                content.className = "glass-dark border rounded-3xl w-full max-w-sm p-8 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-center transform transition-all scale-95 opacity-0 ";
 
                 if(colorTheme === 'red') {
                     btnEl.classList.add('bg-red-600', 'hover:bg-red-500');
@@ -1158,7 +1163,7 @@
                         try {
                             await updateDoc(doc(db, modalTargetSecPath), { isDisabled: !isBanned });
                             showToast("JUGEMENT EXÉCUTÉ", "success");
-                            closeUserModal();
+                            window.closeUserModal();
                             fetchUsers(); 
                         } catch(err) { showToast("Échec critique", "error"); }
                     });
@@ -1211,7 +1216,7 @@
                         const item = document.createElement('div');
                         item.className = "bg-black/50 border border-white/5 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors";
                         item.onclick = () => { 
-                            if(u.uid) { closeStatListModal(); openUserModal(u.uid); }
+                            if(u.uid) { window.closeStatListModal(); window.openUserModal(u.uid); }
                             else { showToast("Utilisateur jamais connecté", "error"); }
                         };
                         item.innerHTML = `
@@ -1245,7 +1250,7 @@
                         
                         const item = document.createElement('div');
                         item.className = "bg-black/50 border border-white/5 p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors";
-                        item.onclick = () => { closeStatListModal(); openUserModal(u.uid); };
+                        item.onclick = () => { window.closeStatListModal(); window.openUserModal(u.uid); };
                         item.innerHTML = `
                             <div class="flex items-center gap-3">
                                 ${onlineIndicator}
@@ -1278,7 +1283,8 @@
             };
 
             window.openApp = (appId) => {
-                if(hubScreen) hubScreen.classList.add('hidden');
+                const hubScreenEl = document.getElementById('hubScreen');
+                if(hubScreenEl) hubScreenEl.classList.add('hidden');
                 document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
                 const a = document.getElementById(appId);
                 if(a) a.classList.remove('hidden');
@@ -1287,7 +1293,8 @@
 
             window.backToHub = () => {
                 document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
-                if(hubScreen) hubScreen.classList.remove('hidden');
+                const hubScreenEl = document.getElementById('hubScreen');
+                if(hubScreenEl) hubScreenEl.classList.remove('hidden');
             };
 
             // ==========================================
@@ -1575,7 +1582,7 @@
                         const statusIndicator = isBanned ? '<div class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_red]"></div>' : '<div class="w-2 h-2 rounded-full bg-slate-700"></div>';
 
                         grid.innerHTML += `
-                            <div class="glass-card border-orange-500/20 p-4 rounded-2xl flex items-center justify-between group" onclick="openCountryConfig('${continentName}', '${c.name}')">
+                            <div class="glass-card border-orange-500/20 p-4 rounded-2xl flex items-center justify-between group" onclick="window.openCountryConfig('${continentName}', '${c.name}')">
                                 <div class="flex items-center gap-3">
                                     <span class="text-3xl">${c.emoji}</span>
                                     <span class="text-white font-bold text-sm tracking-wide group-hover:text-orange-400 transition-colors">${c.name}</span>
@@ -1779,7 +1786,7 @@
                         await setDoc(doc(db, "artifacts", appId, "system", "restrictions"), geoRestrictions, {merge: true});
                         showToast("CONFIGURATION APPLIQUÉE", "success");
                         setTimeout(() => {
-                            backToStep2();
+                            window.backToStep2();
                             const continent = Object.keys(GEO_DATA).find(k => GEO_DATA[k].some(x => x.name === cName));
                             const ci = document.getElementById('countrySearchInput');
                             if(continent) renderCountriesForContinent(continent, ci ? ci.value : ""); 
@@ -1965,8 +1972,10 @@
                             try {
                                 await setDoc(doc(db, "artifacts", appId, "system", "config"), { global_prompt: "" }, {merge: true});
                                 showToast("DIRECTIVE PURGÉE. IA RÉINITIALISÉE.", "success");
+                                console.warn("Directive globale purgée par l'administrateur.");
                             } catch(e) { 
                                 showToast("ERREUR LORS DE LA PURGE", "error"); 
+                                console.error("Erreur de purge de la directive :", e);
                             } finally { 
                                 btn.innerHTML = originalText; 
                             }
@@ -1974,6 +1983,128 @@
                     );
                 };
             }
+
+            window.triggerLogRender = () => {
+                if (document.getElementById('app-archives') && !document.getElementById('app-archives').classList.contains('hidden')) {
+                    window.loadLogs();
+                }
+            };
+            
+            window.loadLogs = async (btnElem) => {
+                if(btnElem) {
+                    const icon = btnElem.querySelector('.refresh-icon');
+                    const text = btnElem.querySelector('.refresh-text');
+                    if(icon) icon.classList.add('fa-spin');
+                    if(text) text.innerText = "[ ACTUALISATION... ]";
+                    setTimeout(() => {
+                        if(icon) icon.classList.remove('fa-spin');
+                        if(text) text.innerText = "[ MAJ LOGS ]";
+                    }, 1000);
+                }
+                
+                try {
+                    globalLogsData = [];
+                    
+                    const reportsSnap = await getDocs(query(collection(db, "artifacts", appId, "public", "data", "reports"), orderBy("date", "desc"), limit(30)));
+                    reportsSnap.forEach(d => {
+                        const data = d.data();
+                        globalLogsData.push({ type: 'grand', icon: 'fa-bug', color: 'red', title: `Rapport de Bug (${data.category})`, desc: data.description, user: data.userName, time: data.date });
+                    });
+
+                    const feedbackSnap = await getDocs(query(collection(db, "artifacts", appId, "public", "data", "feedbacks"), orderBy("date", "desc"), limit(30)));
+                    feedbackSnap.forEach(d => {
+                        const data = d.data();
+                        globalLogsData.push({ type: 'moyen', icon: 'fa-star', color: 'yellow', title: `Avis Utilisateur (${data.rating}/5)`, desc: data.comment, user: data.userName, time: data.date });
+                    });
+
+                    globalUsers.forEach(u => {
+                        if (u.lastSeen) {
+                            const cName = u.country || 'Inconnu';
+                            const flag = getFlagForCountry(cName);
+                            globalLogsData.push({ type: 'petit', icon: 'fa-plug', color: 'blue', title: 'Connexion Réseau', desc: `Plateforme: ${u.isInstalled ? 'PWA Mobile' : 'Navigateur Web'} | Localisation: ${flag} ${cName}`, user: u.userName, time: u.lastSeen });
+                        }
+                    });
+
+                    globalLogsData.sort((a, b) => b.time - a.time);
+                    renderLogs();
+
+                } catch(e) {
+                    console.error("Logs error", e);
+                    const container = document.getElementById('logsContainer');
+                    if(container) container.innerHTML = '<p class="text-xs text-red-500 font-mono text-center mt-10">Erreur de lecture des Archives.</p>';
+                }
+            };
+
+            function renderLogs() {
+                const container = document.getElementById('logsContainer');
+                if(!container) return;
+                container.innerHTML = '';
+                
+                let sourceData = currentLogSource === 'client' ? globalLogsData : adminLogsData;
+                let filtered = sourceData;
+                
+                if (currentLogFilter !== 'all') {
+                    filtered = sourceData.filter(l => l.type === currentLogFilter);
+                }
+
+                if (filtered.length === 0) {
+                    container.innerHTML = '<p class="text-xs text-slate-500 font-mono text-center mt-10">Aucune archive disponible pour cette sélection.</p>';
+                    return;
+                }
+
+                filtered.slice(0, 50).forEach(log => {
+                    const dStr = new Date(log.time).toLocaleString('fr-FR');
+                    container.innerHTML += `
+                        <div class="bg-black/40 border-l-2 log-${log.type} p-4 rounded-r-xl border-y border-r border-white/5 flex gap-4">
+                            <div class="mt-1 w-6 flex justify-center text-${log.color}-500"><i class="fas ${log.icon} text-lg"></i></div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start mb-1">
+                                    <p class="text-xs font-bold text-white uppercase tracking-widest truncate mr-2">${log.title}</p>
+                                    <p class="text-[9px] text-slate-500 font-mono shrink-0">${dStr}</p>
+                                </div>
+                                <p class="text-xs text-slate-300 font-mono mb-2 break-words whitespace-pre-wrap">${log.desc || '---'}</p>
+                                <p class="text-[9px] text-${log.color}-400 font-bold tracking-widest uppercase">USER: ${log.user || 'Inconnu'}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            // Écouteur pour la source (Client vs Admin)
+            document.querySelectorAll('.log-source-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.log-source-btn').forEach(b => {
+                        b.classList.remove('active', 'bg-yellow-500/20', 'text-yellow-400', 'border-yellow-500/30', 'shadow-inner');
+                        b.classList.add('text-slate-400', 'border-transparent');
+                    });
+                    const target = e.currentTarget;
+                    target.classList.remove('text-slate-400', 'border-transparent');
+                    target.classList.add('active', 'bg-yellow-500/20', 'text-yellow-400', 'border-yellow-500/30', 'shadow-inner');
+                    
+                    currentLogSource = target.dataset.source;
+                    renderLogs();
+                });
+            });
+
+            // Écouteur pour les filtres de gravité
+            document.querySelectorAll('.log-filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.log-filter-btn').forEach(b => {
+                        b.classList.remove('active', 'bg-white/10', 'text-white', 'shadow-inner');
+                        if(b.dataset.log !== 'all') {
+                            b.className = `log-filter-btn bg-transparent border border-${b.dataset.log==='petit'?'blue':(b.dataset.log==='moyen'?'yellow':'red')}-500/30 text-${b.dataset.log==='petit'?'blue':(b.dataset.log==='moyen'?'yellow':'red')}-400 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase`;
+                        } else {
+                            b.className = `log-filter-btn bg-transparent border border-white/20 text-slate-400 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase`;
+                        }
+                    });
+                    
+                    const target = e.currentTarget;
+                    target.className = "log-filter-btn active bg-white/10 text-white border border-white/20 px-3 py-1.5 rounded text-[10px] md:text-xs font-mono font-bold uppercase shadow-inner";
+                    currentLogFilter = target.dataset.log;
+                    renderLogs();
+                });
+            });
+
         });
 
         // ENREGISTREMENT DU SERVICE WORKER (POUR L'INSTALLATION PWA)

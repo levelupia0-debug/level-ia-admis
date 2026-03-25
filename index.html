@@ -1718,25 +1718,32 @@
 
             if(resetPromptBtn) {
                 resetPromptBtn.onclick = async () => {
-                    if(confirm("⚠️ ALERTE : Voulez-vous vraiment purger la directive suprême ? L'IA retournera à son état d'origine par défaut.")) {
-                        const btn = document.getElementById('resetGlobalPromptBtn');
-                        const originalText = btn.innerHTML;
-                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PURGE...';
-                        
-                        systemConfig.global_prompt = "";
-                        document.getElementById('globalPromptInput').value = "";
-                        
-                        try {
-                            await setDoc(doc(db, "artifacts", appId, "system", "config"), { global_prompt: "" }, {merge: true});
-                            showToast("DIRECTIVE PURGÉE. IA RÉINITIALISÉE.", "success");
-                            console.warn("Directive globale purgée par l'administrateur.");
-                        } catch(e) { 
-                            showToast("ERREUR LORS DE LA PURGE", "error"); 
-                            console.error("Erreur de purge de la directive :", e);
-                        } finally { 
-                            btn.innerHTML = originalText; 
+                    window.showCustomConfirm(
+                        "Purger L'Oracle", 
+                        "⚠️ ALERTE : Voulez-vous vraiment purger la directive suprême ? L'IA retournera à son état d'origine par défaut.", 
+                        "PURGER", 
+                        "fa-trash-alt", 
+                        "red", 
+                        async () => {
+                            const btn = document.getElementById('resetGlobalPromptBtn');
+                            const originalText = btn.innerHTML;
+                            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PURGE...';
+                            
+                            systemConfig.global_prompt = "";
+                            document.getElementById('globalPromptInput').value = "";
+                            
+                            try {
+                                await setDoc(doc(db, "artifacts", appId, "system", "config"), { global_prompt: "" }, {merge: true});
+                                showToast("DIRECTIVE PURGÉE. IA RÉINITIALISÉE.", "success");
+                                console.warn("Directive globale purgée par l'administrateur.");
+                            } catch(e) { 
+                                showToast("ERREUR LORS DE LA PURGE", "error"); 
+                                console.error("Erreur de purge de la directive :", e);
+                            } finally { 
+                                btn.innerHTML = originalText; 
+                            }
                         }
-                    }
+                    );
                 };
             }
 

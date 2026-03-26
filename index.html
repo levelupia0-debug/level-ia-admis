@@ -293,7 +293,7 @@
                 </div>
             </div>
 
-            <!-- NOUVEAU MODULE 08 : L'ÉCOUTE (MODE DIEU) -->
+            <!-- MODULE 08 : L'ÉCOUTE (MODE DIEU) -->
             <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="window.openApp('app-ecoute')">
                 <div class="flex justify-between items-start mb-10">
                     <i class="fas fa-ear-listen text-4xl text-teal-400 group-hover:glow-text transition-all"></i>
@@ -301,7 +301,7 @@
                 </div>
                 <div>
                     <h3 class="text-2xl font-bold text-white uppercase tracking-wider mb-2">L'Écoute</h3>
-                    <p class="text-xs text-slate-400 font-mono">Mode Dieu. Surveillance en temps réel et lecture des sessions de chat des cibles.</p>
+                    <p class="text-xs text-slate-400 font-mono">Mode Dieu. Surveillance en temps réel des sessions.</p>
                 </div>
             </div>
         </div>
@@ -794,7 +794,7 @@
         let currentLogSource = 'client'; 
         let globalLogsData = [];
 
-        // === INTERCEPTION DE LA CONSOLE ===
+        // === INTERCEPTION DE LA CONSOLE FIXÉE (PLUS DE CRASH CIRCULAIRE) ===
         const origLog = console.log;
         const origWarn = console.warn;
         const origError = console.error;
@@ -812,8 +812,9 @@
         console.error = function(...args) {
             origError.apply(console, args);
             const safeArgs = args.map(a => {
-                try { return typeof a === 'object' ? JSON.stringify(a, Object.getOwnPropertyNames(a)) : a; } 
-                catch(e) { return String(a); }
+                if (a && a.message) return a.message; 
+                try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } 
+                catch(e) { return "Objet complexe (Erreur non-affichable évité)"; } 
             });
             adminLogsData.push({ type: 'grand', icon: 'fa-bomb', color: 'red', title: 'SYS_ERR', desc: safeArgs.join(' '), user: currentAdmin ? currentAdmin.name : 'ROOT', time: Date.now() });
             if(currentLogSource === 'admin' && typeof window.triggerLogRender === 'function') window.triggerLogRender();
@@ -1038,7 +1039,6 @@
         };
 
         const getFlagForCountry = (countryName, countryCode) => {
-            // 1. Code direct à 2 lettres fourni par l'API
             if (countryCode && typeof countryCode === 'string' && countryCode.trim().length === 2) {
                 const codePoints = countryCode.trim().toUpperCase().split('').map(char => 127397 + char.charCodeAt());
                 return String.fromCodePoint(...codePoints);
@@ -1048,27 +1048,23 @@
             let searchName = String(countryName).trim();
             if (!searchName || searchName.toLowerCase() === 'inconnu') return "🏳️";
 
-            // 2. Le nom envoyé est juste un code de 2 lettres (ex: "FR")
             if (searchName.length === 2) {
                 const codePoints = searchName.toUpperCase().split('').map(char => 127397 + char.charCodeAt());
                 return String.fromCodePoint(...codePoints);
             }
             
-            // 3. Code caché dans le texte (ex: "France (FR)", "fr-FR")
             const codeMatch = searchName.match(/\b([A-Z]{2})\b/);
             if (codeMatch && codeMatch[1] && searchName.length <= 20) {
                 const codePoints = codeMatch[1].toUpperCase().split('').map(char => 127397 + char.charCodeAt());
                 return String.fromCodePoint(...codePoints);
             }
 
-            // 4. Gestion des fuseaux horaires (ex: "Europe/Paris" -> "Paris")
             if (searchName.includes('/')) {
                 searchName = searchName.split('/').pop().replace(/_/g, ' ');
             }
 
             searchName = searchName.toLowerCase();
 
-            // 5. Traduction express Anglais -> Français
             const engToFr = {
                 "united states": "États-Unis", "usa": "États-Unis", "us": "États-Unis", "united kingdom": "Royaume-Uni", "uk": "Royaume-Uni",
                 "algeria": "Algérie", "morocco": "Maroc", "tunisia": "Tunisie", "germany": "Allemagne", "spain": "Espagne", "italy": "Italie",
@@ -1086,7 +1082,6 @@
             const removeAccents = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const normalizedSearch = removeAccents(searchName);
 
-            // 6. Recherche par nom de PAYS
             for (const continent in GEO_DATA) {
                 const found = GEO_DATA[continent].find(c => {
                     const cNameLower = c.name.toLowerCase();
@@ -1098,19 +1093,17 @@
                 if (found) return found.emoji;
             }
             
-            // 7. Recherche par nom de VILLE (Reverse Lookup Global)
             for (const continent in GEO_DATA) {
                 for (const c of GEO_DATA[continent]) {
                     if (c.cities && c.cities.some(ci => {
                         const ciNorm = removeAccents(ci.toLowerCase());
                         return ciNorm === normalizedSearch || ci.toLowerCase() === searchName || (searchName.length > 3 && searchName.includes(ciNorm));
                     })) {
-                        return c.emoji; // On a trouvé le pays via la ville !
+                        return c.emoji; 
                     }
                 }
             }
             
-            // 8. Drapeau Noir + DEBUG (Affiche ce que l'application envoie réellement)
             let debugText = String(countryName).substring(0, 10).trim();
             return `🏴 ${debugText}`; 
         };
@@ -1121,14 +1114,12 @@
             return { lat, lng };
         };
 
-        // EXTRACTEUR AGRESSIF DE LOCALISATION
         const getUserLocationStr = (u) => {
             let city = u.city || u.cityName || u.city_name || (u.location && (u.location.city || u.location.cityName || u.location.city_name)) || (u.geo && (u.geo.city || u.geo.cityName || u.geo.city_name));
             let country = u.country || u.countryName || u.country_name || (u.location && (u.location.country || u.location.countryName || u.location.country_name)) || (u.geo && (u.geo.country || u.geo.countryName || u.geo.country_name));
             let code = u.countryCode || u.country_code || u.isoCode || (u.location && (u.location.countryCode || u.location.country_code || u.location.isoCode)) || (u.geo && (u.geo.countryCode || u.geo.country_code || u.geo.isoCode));
             let gps = getUserGPS(u);
 
-            // Cas spécial : on a que le GPS sans aucun texte
             if (!city && !country && !code && gps.lat) {
                 return { city: "GPS", country: "Localisé", code: "", flag: "🌍" };
             }
@@ -1138,7 +1129,6 @@
 
             let flag = getFlagForCountry(country, code);
 
-            // Si on a un drapeau noir sur le pays, on tente de trouver le drapeau en utilisant le nom de la ville
             if (flag.includes("🏴") && city !== '?') {
                const cityFlag = getFlagForCountry(city, null); 
                if (!cityFlag.includes("🏴") && cityFlag !== "🏳️") flag = cityFlag;
@@ -1382,7 +1372,7 @@
                             const u = globalUsers.find(user => user.uid === sec.uid) || {};
                             const loc = getUserLocationStr(u);
                             const name = u.userName || sec.name || 'Inconnu';
-                            const isOnline = u.isOnline && (now - u.lastSeen < 120000);
+                            const isOnline = u.isOnline && (now - u.lastSeen < 300000);
                             const onlineIndicator = isOnline ? '<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-slate-700"></div>';
                             const isBanned = sec.isDisabled === true;
                             
@@ -1412,7 +1402,7 @@
                     } else {
                         let filtered = [];
                         if (type === 'all') { setSafeText('statListTitle', "Tous les Utilisateurs"); filtered = globalUsers; } 
-                        else if (type === 'online') { setSafeText('statListTitle', "Utilisateurs En Ligne"); filtered = globalUsers.filter(u => u.isOnline && (now - u.lastSeen < 120000)); } 
+                        else if (type === 'online') { setSafeText('statListTitle', "Utilisateurs En Ligne"); filtered = globalUsers.filter(u => u.isOnline && (now - u.lastSeen < 300000)); } 
                         else if (type === 'installed') { setSafeText('statListTitle', "Installations (PWA)"); filtered = globalUsers.filter(u => u.isInstalled === true); }
 
                         setSafeText('statListCount', `${filtered.length} Résultat(s) Piste(s)`);
@@ -1420,7 +1410,7 @@
                         filtered.forEach(u => {
                             const loc = getUserLocationStr(u);
                             const name = u.userName || 'Inconnu';
-                            const isOnline = u.isOnline && (now - u.lastSeen < 120000);
+                            const isOnline = u.isOnline && (now - u.lastSeen < 300000);
                             const onlineIndicator = isOnline ? '<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-slate-700"></div>';
                             
                             const gps = getUserGPS(u);
@@ -1557,6 +1547,10 @@
                         if(errEl) errEl.classList.add('hidden');
 
                         try {
+                            if (!auth.currentUser) {
+                                await signInAnonymously(auth);
+                            }
+
                             const configDoc = await getDoc(doc(db, "artifacts", appId, "system", "config"));
                             const realPin = configDoc.exists() && configDoc.data().admin_pin ? configDoc.data().admin_pin : "1994";
                             
@@ -1665,7 +1659,7 @@
                             snap.forEach(d => {
                                 const u = d.data();
                                 u.uid = d.id;
-                                if (u.isOnline && (now - u.lastSeen < 120000)) onlineCount++;
+                                if (u.isOnline && (now - u.lastSeen < 300000)) onlineCount++;
                                 if (u.isInstalled === true) installedCount++;
                                 globalUsers.push(u);
                             });
@@ -1678,7 +1672,6 @@
                             renderUsersGrid();
                             populateBroadcastTargets();
                             
-                            // Re-render ecoute grid if it's currently open
                             if (!document.getElementById('app-ecoute').classList.contains('hidden')) {
                                 renderEcouteUsersGrid();
                             }
@@ -1705,7 +1698,7 @@
                         if (search && !nameStr.toLowerCase().includes(search) && !emailStr.toLowerCase().includes(search) && !keyStr.toLowerCase().includes(search)) return;
 
                         const isBanned = sec.isDisabled === true;
-                        const isOnline = u.isOnline && (Date.now() - u.lastSeen < 120000);
+                        const isOnline = u.isOnline && (Date.now() - u.lastSeen < 300000);
                         
                         const cardTheme = isBanned ? 'border-red-500/50 bg-red-950/20' : (isOnline ? 'border-green-500/30 bg-green-950/10' : 'border-white/10 bg-black/40');
                         const indicator = isBanned ? '<i class="fas fa-skull text-red-500"></i>' : (isOnline ? '<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-slate-600"></div>');
@@ -1762,6 +1755,7 @@
                     if(!grid) return;
                     
                     if (GEO_DATA[continentName]) {
+                        if (!geoRestrictions.countries) geoRestrictions.countries = {};
                         let banCount = 0;
                         let htmlContent = ''; 
                         
@@ -1837,14 +1831,23 @@
                                     label.classList.add('animate-pulse');
                                 }
                                 
+                                if (!geoRestrictions) geoRestrictions = {};
                                 if (!geoRestrictions.countries) geoRestrictions.countries = {};
                                 
+                                const engToFr = { "United States": "États-Unis", "United Kingdom": "Royaume-Uni", "Algeria": "Algérie", "Morocco": "Maroc", "Tunisia": "Tunisie", "Germany": "Allemagne", "Spain": "Espagne", "Italy": "Italie", "Brazil": "Brésil", "South Africa": "Afrique du Sud", "Russia": "Russie", "Japan": "Japon", "China": "Chine", "India": "Inde", "Egypt": "Égypte", "Switzerland": "Suisse", "Belgium": "Belgique", "Netherlands": "Pays-Bas", "Sweden": "Suède", "Turkey": "Turquie", "Mexico": "Mexique", "Colombia": "Colombie", "Argentina": "Argentine", "Saudi Arabia": "Arabie Saoudite", "United Arab Emirates": "Émirats Arabes Unis", "Ivory Coast": "Côte d'Ivoire", "Senegal": "Sénégal", "Cameroon": "Cameroun", "Lebanon": "Liban" };
+
                                 GEO_DATA[continent].forEach(c => {
-                                    if (!geoRestrictions.countries[c.name]) {
-                                        geoRestrictions.countries[c.name] = { banned: isBanning, bannedCities: [], disabledModes: [], banMessage: "", banIcon: "warning", customAppName: "" };
-                                    } else {
-                                        geoRestrictions.countries[c.name].banned = isBanning;
-                                    }
+                                    const cName = c.name;
+                                    const cConfig = geoRestrictions.countries[cName] || { bannedCities: [], disabledModes: [], banMessage: "", banIcon: "warning", customAppName: "" };
+                                    cConfig.banned = isBanning;
+
+                                    geoRestrictions.countries[cName] = cConfig;
+                                    
+                                    const englishAliases = Object.keys(engToFr).filter(k => engToFr[k] === cName);
+                                    englishAliases.forEach(alias => { geoRestrictions.countries[alias] = cConfig; });
+                                    
+                                    const unaccented = cName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                                    if (unaccented !== cName) geoRestrictions.countries[unaccented] = cConfig;
                                 });
 
                                 try {
@@ -1884,6 +1887,9 @@
                     if(!countryObj) return;
 
                     currentCountryContext = countryObj; 
+
+                    if (!geoRestrictions) geoRestrictions = {};
+                    if (!geoRestrictions.countries) geoRestrictions.countries = {};
 
                     const cData = geoRestrictions.countries[countryName] || { 
                         banned: false, bannedCities: [], disabledModes: [], banMessage: "", banIcon: "shield", customAppName: "" 
@@ -1970,8 +1976,10 @@
                         const selIconBtn = document.querySelector('.svg-icon-btn.selected');
                         const icon = selIconBtn ? selIconBtn.dataset.icon : 'shield';
 
+                        if (!geoRestrictions) geoRestrictions = {};
                         if (!geoRestrictions.countries) geoRestrictions.countries = {};
-                        geoRestrictions.countries[cName] = {
+
+                        const ruleConfig = {
                             banned: isBanned,
                             bannedCities: bannedCities,
                             disabledModes: disabledModes,
@@ -1979,6 +1987,16 @@
                             banIcon: icon,
                             customAppName: appName
                         };
+
+                        // DUPLICATION DE SAUVEGARDE (Garantit que le client trouve la règle)
+                        geoRestrictions.countries[cName] = ruleConfig;
+
+                        const engToFr = { "United States": "États-Unis", "United Kingdom": "Royaume-Uni", "Algeria": "Algérie", "Morocco": "Maroc", "Tunisia": "Tunisie", "Germany": "Allemagne", "Spain": "Espagne", "Italy": "Italie", "Brazil": "Brésil", "South Africa": "Afrique du Sud", "Russia": "Russie", "Japan": "Japon", "China": "Chine", "India": "Inde", "Egypt": "Égypte", "Switzerland": "Suisse", "Belgium": "Belgique", "Netherlands": "Pays-Bas", "Sweden": "Suède", "Turkey": "Turquie", "Mexico": "Mexique", "Colombia": "Colombie", "Argentina": "Argentine", "Saudi Arabia": "Arabie Saoudite", "United Arab Emirates": "Émirats Arabes Unis", "Ivory Coast": "Côte d'Ivoire", "Senegal": "Sénégal", "Cameroon": "Cameroun", "Lebanon": "Liban" };
+                        const englishAliases = Object.keys(engToFr).filter(k => engToFr[k] === cName);
+                        englishAliases.forEach(alias => { geoRestrictions.countries[alias] = ruleConfig; });
+
+                        const unaccented = cName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        if (unaccented !== cName) geoRestrictions.countries[unaccented] = ruleConfig;
 
                         try {
                             await setDoc(doc(db, "artifacts", appId, "system", "restrictions"), geoRestrictions, {merge: true});
@@ -2323,7 +2341,7 @@
                         
                         if (search && !nameStr.toLowerCase().includes(search) && !emailStr.toLowerCase().includes(search)) return;
 
-                        const isOnline = u.isOnline && (Date.now() - u.lastSeen < 120000);
+                        const isOnline = u.isOnline && (Date.now() - u.lastSeen < 300000);
                         const cardTheme = isOnline ? 'border-teal-500/30 bg-teal-950/10' : 'border-white/10 bg-black/40';
                         const indicator = isOnline ? '<div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse shadow-[0_0_8px_#14b8a6]"></div>' : '<div class="w-2 h-2 rounded-full bg-slate-600"></div>';
                         
@@ -2369,16 +2387,9 @@
                     
                     try {
                         let sessions = [];
-                        let chatPath = "chats";
-
-                        // 1. SCAN INTELLIGENT : On cherche d'abord dans "chats"
-                        let snap = await getDocs(collection(db, "artifacts", appId, "users", uid, "chats"));
                         
-                        // 2. PLAN DE SECOURS : Si "chats" est vide, on cherche dans "conversations"
-                        if(snap.empty) {
-                            snap = await getDocs(collection(db, "artifacts", appId, "users", uid, "conversations"));
-                            if(!snap.empty) chatPath = "conversations";
-                        }
+                        // LECTURE DIRECTE DE LA COLLECTION SESSIONS
+                        const snap = await getDocs(collection(db, "artifacts", appId, "users", uid, "sessions"));
                         
                         if(container) container.innerHTML = '';
                         
@@ -2388,10 +2399,10 @@
                         }
                         
                         snap.forEach(d => {
-                            sessions.push({ id: d.id, path: chatPath, ...d.data() });
+                            sessions.push({ id: d.id, ...d.data() });
                         });
 
-                        // TRI JAVASCRIPT (Évite le bug de filtrage Firestore si le champ date change de nom)
+                        // TRI JAVASCRIPT
                         sessions.sort((a, b) => {
                             const timeA = a.updatedAt || a.createdAt || a.timestamp || 0;
                             const timeB = b.updatedAt || b.createdAt || b.timestamp || 0;
@@ -2406,7 +2417,7 @@
                             
                             if(container) {
                                 container.innerHTML += `
-                                    <div class="bg-black/60 border border-teal-500/20 p-4 rounded-xl mb-3 cursor-pointer hover:bg-teal-900/30 hover:border-teal-500/50 transition-all flex justify-between items-center group" onclick="window.openEcouteChat('${chat.id}', '${safeTitle}', '${chat.path}')">
+                                    <div class="bg-black/60 border border-teal-500/20 p-4 rounded-xl mb-3 cursor-pointer hover:bg-teal-900/30 hover:border-teal-500/50 transition-all flex justify-between items-center group" onclick="window.openEcouteChat('${chat.id}', '${safeTitle}')">
                                         <div class="min-w-0 pr-4">
                                             <h4 class="text-white font-bold text-sm mb-1 truncate">${titleStr}</h4>
                                             <p class="text-[10px] text-teal-500/50 font-mono truncate">${dStr}</p>
@@ -2418,11 +2429,11 @@
                         });
                     } catch(e) {
                         console.error(e);
-                        if(container) container.innerHTML = '<p class="text-center text-red-500 mt-10 font-mono text-xs border border-red-500/20 bg-red-950/20 py-4 rounded-xl">Erreur d\'accès aux archives (Vérifiez les règles de la base de données).</p>';
+                        if(container) container.innerHTML = '<p class="text-center text-red-500 mt-10 font-mono text-xs border border-red-500/20 bg-red-950/20 py-4 rounded-xl">Erreur d\'accès aux archives (Vérifiez les permissions).</p>';
                     }
                 };
 
-                window.openEcouteChat = (chatId, title, chatPath = "chats") => {
+                window.openEcouteChat = (chatId, title) => {
                     setSafeText('ecouteChatTitle', title);
                     
                     const step2 = document.getElementById('ecoute-step-2');
@@ -2436,38 +2447,40 @@
                     if(ecouteUnsubscribe) { ecouteUnsubscribe(); ecouteUnsubscribe = null; }
                     
                     try {
-                        // On prend tous les messages bruts sans orderBy pour ne manquer aucun message
-                        const colRef = collection(db, "artifacts", appId, "users", ecouteTargetUid, chatPath, chatId, "messages");
+                        // ON ECOUTE LE DOCUMENT DIRECTEMENT POUR LIRE LE TABLEAU "MESSAGES"
+                        const docRef = doc(db, "artifacts", appId, "users", ecouteTargetUid, "sessions", chatId);
                         
-                        ecouteUnsubscribe = onSnapshot(colRef, (snap) => {
+                        ecouteUnsubscribe = onSnapshot(docRef, (docSnap) => {
                             if(container) container.innerHTML = '';
-                            if(snap.empty) {
-                                if(container) container.innerHTML = '<p class="text-center text-slate-500 mt-10 font-mono text-xs">Flux de communication vide.</p>';
+                            if(!docSnap.exists()) {
+                                if(container) container.innerHTML = '<p class="text-center text-slate-500 mt-10 font-mono text-xs">Session introuvable.</p>';
                                 return;
                             }
                             
-                            let msgs = [];
-                            snap.forEach(d => msgs.push(d.data()));
+                            const data = docSnap.data();
+                            const msgs = data.messages || [];
 
-                            // Tri Javascript par date chronologique
-                            msgs.sort((a, b) => {
-                                const timeA = a.createdAt || a.timestamp || 0;
-                                const timeB = b.createdAt || b.timestamp || 0;
-                                return timeA - timeB; 
-                            });
+                            if(msgs.length === 0) {
+                                if(container) container.innerHTML = '<p class="text-center text-slate-500 mt-10 font-mono text-xs">Flux de communication vide.</p>';
+                                return;
+                            }
 
                             msgs.forEach(msg => {
-                                const isUser = msg.role === 'user';
-                                const align = isUser ? 'justify-end' : 'justify-start';
-                                const bg = isUser ? 'bg-teal-800 text-white' : 'bg-slate-800 text-slate-200 border border-white/10';
-                                const radius = isUser ? 'rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl rounded-br-sm' : 'rounded-tl-2xl rounded-tr-2xl rounded-bl-sm rounded-br-2xl';
-                                const icon = isUser ? '' : '<div class="w-6 h-6 rounded-full bg-fuchsia-500/20 flex items-center justify-center shrink-0 mt-1 shadow-[0_0_10px_rgba(217,70,239,0.3)]"><i class="fas fa-robot text-[10px] text-fuchsia-400"></i></div>';
-                                
-                                if(container) {
+                                // Message de l'Utilisateur
+                                if (msg.user) {
                                     container.innerHTML += `
-                                        <div class="flex ${align} mb-4 gap-3 w-full">
-                                            ${!isUser ? icon : ''}
-                                            <div class="max-w-[85%] md:max-w-[70%] ${bg} ${radius} p-3 text-sm shadow-lg whitespace-pre-wrap font-sans leading-relaxed">${msg.text || '[Contenu illisible]'}</div>
+                                        <div class="flex justify-end mb-4 gap-3 w-full">
+                                            <div class="max-w-[85%] md:max-w-[70%] bg-teal-800 text-white rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl rounded-br-sm p-3 text-sm shadow-lg whitespace-pre-wrap font-sans leading-relaxed">${DOMPurify.sanitize(msg.user)}</div>
+                                        </div>
+                                    `;
+                                }
+                                // Message de l'IA
+                                if (msg.ai) {
+                                    const icon = '<div class="w-6 h-6 rounded-full bg-fuchsia-500/20 flex items-center justify-center shrink-0 mt-1 shadow-[0_0_10px_rgba(217,70,239,0.3)]"><i class="fas fa-robot text-[10px] text-fuchsia-400"></i></div>';
+                                    container.innerHTML += `
+                                        <div class="flex justify-start mb-4 gap-3 w-full">
+                                            ${icon}
+                                            <div class="max-w-[85%] md:max-w-[70%] bg-slate-800 text-slate-200 border border-white/10 rounded-tl-2xl rounded-tr-2xl rounded-bl-sm rounded-br-2xl p-3 text-sm shadow-lg whitespace-pre-wrap font-sans leading-relaxed">${DOMPurify.sanitize(msg.ai)}</div>
                                         </div>
                                     `;
                                 }

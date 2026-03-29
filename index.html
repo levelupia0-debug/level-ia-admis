@@ -8,16 +8,38 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     
+    <!-- === BALISES SEO POUR GOOGLE === -->
+    <meta name="description" content="Level IA - Système d'Intelligence Artificielle Avancé et Panneau de Contrôle Sécurisé.">
+    <meta name="keywords" content="Level IA, Assistant IA, Intelligence Artificielle, Sécurité, Dashboard, LevelUp">
+    <meta name="author" content="LevelUp">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Code de validation Google Search Console (à remplir) -->
+    <meta name="google-site-verification" content="REMPLACE_CE_TEXTE_PAR_TON_CODE_GOOGLE" />
+    
+    <!-- Open Graph (Pour les beaux aperçus sur WhatsApp, Discord, Twitter...) -->
+    <meta property="og:title" content="LEVEL IA - OS">
+    <meta property="og:description" content="Interface d'administration et de sécurité Level IA.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ton-projet.vercel.app">
+    <!-- =============================== -->
+
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icon.svg">
 
     <title>LEVEL IA - OS</title>
     
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     
+    <!-- AJOUT DE DOMPURIFY POUR CORRIGER L'ERREUR DE LECTURE DES MESSAGES -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+
+    <!-- AJOUT DU SCRIPT EMAILJS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -85,6 +107,9 @@
         .log-petit { border-left-color: #3b82f6; }
         .log-moyen { border-left-color: #eab308; }
         .log-grand { border-left-color: #ef4444; }
+        
+        .prose pre { max-width: 100%; overflow-x: auto; }
+        .prose * { overflow-wrap: anywhere !important; word-break: break-word !important; }
     </style>
 </head>
 <body class="h-[100dvh] flex flex-col overflow-hidden selection:bg-purple-500/30 scanline-effect min-h-0">
@@ -97,6 +122,21 @@
     <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 transform -translate-y-[150%] transition-transform duration-300 z-[10001] glass-dark border-b-2 text-white px-8 py-3 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.8)] flex items-center gap-3">
         <i class="fas fa-terminal" id="toast-icon"></i>
         <span id="toast-msg" class="text-xs font-mono font-bold tracking-widest uppercase">System Msg</span>
+    </div>
+
+    <!-- PIN PROMPT MODAL (Z-10002) -->
+    <div id="pinPromptModal" class="fixed inset-0 z-[10002] hidden flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+        <div class="glass-dark border border-purple-500/30 rounded-3xl w-full max-w-xs p-8 shadow-[0_0_50px_rgba(168,85,247,0.15)] text-center transform transition-all scale-95 opacity-0" id="pinPromptContent">
+            <i class="fas fa-lock text-4xl text-purple-500 mb-6 glow-text"></i>
+            <h3 class="text-lg font-bold text-white uppercase tracking-widest mb-2">Autorisation</h3>
+            <p class="text-[10px] text-slate-400 font-mono mb-6 uppercase">Saisissez le code PIN d'accès.</p>
+            <input type="password" id="pinPromptInput" maxlength="4" placeholder="••••" class="w-full bg-black/80 border border-slate-800 rounded-xl px-4 py-4 text-purple-300 font-mono text-center tracking-[1em] text-2xl focus:outline-none focus:border-purple-500 transition-all mb-4">
+            <p id="pinPromptError" class="text-red-500 text-[10px] font-mono uppercase font-bold mb-4 hidden">Code incorrect</p>
+            <div class="flex gap-3">
+                <button onclick="window.closePinPrompt()" class="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all">Annuler</button>
+                <button id="verifyPinPromptBtn" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all">Valider</button>
+            </div>
+        </div>
     </div>
 
     <!-- CUSTOM CONFIRM MODAL (Z-10000) -->
@@ -143,7 +183,10 @@
                 </div>
                 <div class="bg-black/50 border border-white/5 p-4 rounded-xl overflow-hidden flex flex-col justify-center">
                     <p class="text-[9px] text-slate-500 font-mono uppercase tracking-widest mb-1">Clé d'Accès</p>
-                    <p id="modalUserKey" class="text-sm font-bold text-purple-400 font-mono truncate">LVL-XXXXX</p>
+                    <div class="flex items-center justify-between w-full">
+                        <p id="modalUserKey" class="text-sm font-bold text-slate-500 font-mono truncate">LVL-•••••</p>
+                        <i class="fas fa-lock text-slate-600" title="Chiffrement Définitif"></i>
+                    </div>
                 </div>
             </div>
             <div class="bg-black/50 border border-white/5 p-4 rounded-xl mb-8 text-center flex flex-col items-center justify-center">
@@ -304,6 +347,19 @@
                     <p class="text-xs text-slate-400 font-mono">Mode Dieu. Surveillance en temps réel des sessions.</p>
                 </div>
             </div>
+
+            <!-- MODULE 09 : MESSAGERIE (EMAILJS) -->
+            <div class="glass-card p-8 rounded-3xl flex flex-col justify-between group" onclick="window.openApp('app-messagerie')">
+                <div class="flex justify-between items-start mb-10">
+                    <i class="fas fa-envelope text-4xl text-rose-400 group-hover:glow-text transition-all"></i>
+                    <span class="text-[9px] bg-rose-500/20 text-rose-300 px-2 py-1 rounded font-mono border border-rose-500/30">MODULE 09</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-white uppercase tracking-wider mb-2">Messagerie</h3>
+                    <p class="text-xs text-slate-400 font-mono">Transmission Email. Envoi de courriels ciblés via EmailJS.</p>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -611,6 +667,17 @@
                         </label>
                     </div>
                 </div>
+                
+                <!-- AJOUT DU BLOC DE CONFIGURATION DU PIN -->
+                <div class="bg-black/60 border border-emerald-500/30 p-8 rounded-3xl shadow-[0_0_30px_rgba(16,185,129,0.05)]">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h3 class="text-xl font-mono font-bold text-white uppercase tracking-widest">Code PIN Sécurité</h3>
+                            <p class="text-[10px] text-emerald-500/70 font-mono mt-1 uppercase">Sésame pour accéder au Module 08 (L'Écoute).</p>
+                        </div>
+                        <input type="text" id="adminPinConfigInput" maxlength="4" class="bg-black/50 border-b-2 border-emerald-500/50 px-4 py-2 text-xl text-white focus:outline-none focus:border-emerald-500 font-mono text-center tracking-[0.5em] w-24">
+                    </div>
+                </div>
 
                 <div class="bg-black/60 border border-emerald-500/30 p-8 rounded-3xl shadow-[0_0_30px_rgba(16,185,129,0.05)]">
                     <h3 class="text-xl font-mono font-bold text-white uppercase tracking-widest mb-2">Clés API Gemini (Moteur)</h3>
@@ -707,7 +774,7 @@
         </div>
     </div>
 
-    <!-- 8. NOUVEAU MODULE: L'ÉCOUTE (SURVEILLANCE TEMPS RÉEL) -->
+    <!-- 8. L'ÉCOUTE (SURVEILLANCE TEMPS RÉEL) -->
     <div id="app-ecoute" class="app-screen hidden flex-1 flex flex-col bg-[#001010] relative z-40 min-h-0">
         <header class="p-4 md:p-6 border-b border-teal-500/20 flex items-center justify-between glass-dark shrink-0">
             <div class="flex items-center gap-4 md:gap-6">
@@ -777,6 +844,49 @@
         </div>
     </div>
 
+    <!-- 9. MESSAGERIE (EMAILJS) -->
+    <div id="app-messagerie" class="app-screen hidden flex-1 flex flex-col bg-[#100005] relative z-40 min-h-0">
+        <header class="p-6 border-b border-rose-500/20 flex items-center gap-6 glass-dark shrink-0">
+            <button onclick="window.backToHub()" class="text-slate-400 hover:text-white transition-all text-2xl"><i class="fas fa-arrow-left"></i></button>
+            <h2 class="text-2xl font-bold uppercase tracking-widest text-rose-400 glow-text">Messagerie Externe</h2>
+        </header>
+        <div class="flex-1 p-4 md:p-8 pb-32 overflow-y-auto custom-scrollbar min-h-0 flex items-start justify-center">
+            <div class="w-full max-w-3xl mx-auto bg-black/80 border border-rose-500/30 rounded-3xl p-6 md:p-10 shadow-[0_0_50px_rgba(244,63,94,0.1)] mt-4 flex flex-col">
+                <div class="flex items-center gap-4 mb-8 border-b border-white/5 pb-6">
+                    <i class="fas fa-paper-plane text-4xl text-rose-500"></i>
+                    <div>
+                        <h3 class="text-xl font-extrabold text-white uppercase tracking-widest">Envoi Direct EmailJS</h3>
+                        <p class="text-[10px] text-rose-400 font-mono tracking-widest uppercase">Protocole de contact asynchrone</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-[10px] font-mono text-rose-400 mb-2 uppercase tracking-widest">> Destinataire (Utilisateur avec Email)</label>
+                        <select id="emailDestinataire" class="w-full bg-rose-950/20 border border-rose-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-400 font-mono">
+                            <option value="">Sélectionnez une cible valide...</option>
+                            <!-- Rempli par JS -->
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-[10px] font-mono text-rose-400 mb-2 uppercase tracking-widest">> Objet du Mail</label>
+                        <input type="text" id="emailSujet" placeholder="Alerte Système, Mise à jour..." class="w-full bg-transparent border-b border-rose-500/50 px-2 py-3 text-white text-base focus:outline-none focus:border-rose-400 font-mono placeholder-slate-600">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-mono text-rose-400 mb-2 uppercase tracking-widest">> Contenu du Message</label>
+                        <textarea id="emailCorps" rows="5" placeholder="Saisissez le corps de l'email ici..." class="w-full bg-rose-950/10 border border-rose-500/30 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-rose-400 font-mono resize-none custom-scrollbar placeholder-slate-700"></textarea>
+                    </div>
+
+                    <button id="sendEmailBtn" onclick="window.executerEnvoiMail()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-black py-4 rounded-xl transition-all uppercase tracking-[0.2em] text-sm shadow-[0_0_20px_rgba(244,63,94,0.4)] mt-4">
+                        <i class="fas fa-rocket mr-2"></i> EXPÉDIER LE MESSAGE
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- SCRIPT GÉODATA ET LOGIQUE GLOBALE -->
     <script>
@@ -784,7 +894,7 @@
         let currentAdmin = null;
         let globalUsers = [];
         let globalSecurity = [];
-        let systemConfig = { maintenance: false, gemini_api_keys: [], admin_pin: "1994", global_prompt: "" };
+        let systemConfig = { maintenance: false, gemini_api_keys: [], admin_pin: "1974", global_prompt: "" };
         let geoRestrictions = { countries: {}, continents: {} }; 
         let currentCountryContext = null; 
 
@@ -794,7 +904,12 @@
         let currentLogSource = 'client'; 
         let globalLogsData = [];
 
-        // === INTERCEPTION DE LA CONSOLE FIXÉE (PLUS DE CRASH CIRCULAIRE) ===
+        // INITIALISATION DE MARKED POUR LE RENDU DU TEXTE DE L'IA (MODULE 08)
+        if (window.marked) {
+            marked.setOptions({ breaks: true });
+        }
+
+        // === INTERCEPTION DE LA CONSOLE FIXÉE ===
         const origLog = console.log;
         const origWarn = console.warn;
         const origError = console.error;
@@ -1137,6 +1252,14 @@
             return { city, country, code, flag };
         };
 
+        const maskKey = (key) => {
+            if (!key || key === '---') return '---';
+            const parts = key.split('-');
+            if (parts.length >= 3) return `${parts[0]}-•••••-•••••`;
+            if (key.length > 6) return key.substring(0, 4) + '••••••••';
+            return '••••••••';
+        };
+
         const setSafeText = (id, text) => { 
             const el = document.getElementById(id); 
             if(el) el.innerText = text; 
@@ -1237,6 +1360,45 @@
                     setTimeout(() => { if(modal) modal.classList.add('hidden'); }, 200);
                 };
 
+                // FONCTION PIN PROMPT
+                window.openPinPrompt = (onSuccess) => {
+                    const modal = document.getElementById('pinPromptModal');
+                    const content = document.getElementById('pinPromptContent');
+                    const input = document.getElementById('pinPromptInput');
+                    const error = document.getElementById('pinPromptError');
+                    const verifyBtn = document.getElementById('verifyPinPromptBtn');
+
+                    if(!modal || !content || !input || !verifyBtn) return;
+
+                    input.value = "";
+                    error.classList.add('hidden');
+
+                    const realPin = systemConfig.admin_pin || "1974";
+
+                    verifyBtn.onclick = () => {
+                        if (input.value === realPin) {
+                            window.closePinPrompt();
+                            if(onSuccess) onSuccess();
+                        } else {
+                            error.classList.remove('hidden');
+                            input.value = "";
+                        }
+                    };
+
+                    modal.classList.remove('hidden');
+                    setTimeout(() => { 
+                        content.classList.remove('scale-95', 'opacity-0'); 
+                        input.focus();
+                    }, 10);
+                };
+
+                window.closePinPrompt = () => {
+                    const modal = document.getElementById('pinPromptModal');
+                    const content = document.getElementById('pinPromptContent');
+                    if(content) content.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => { if(modal) modal.classList.add('hidden'); }, 200);
+                };
+
                 let modalTargetUser = null;
                 let modalTargetSecPath = null;
 
@@ -1264,11 +1426,13 @@
                     }
                     setSafeHTML('modalUserLocation', locationHtml);
                     
-                    setSafeText('modalUserKey', sec.key || '---');
-
+                    const rawKey = sec.key || '---';
+                    const maskedKey = maskKey(rawKey);
+                    setSafeText('modalUserKey', maskedKey);
+                    
                     const platformBadge = document.getElementById('modalUserPlatform');
                     if(platformBadge) {
-                        if (u.isInstalled === true) {
+                        if (u.isInstalled === true || u.hasInstalledPWA === true) {
                             platformBadge.innerHTML = `<i class="fas fa-mobile-alt text-blue-400 text-lg"></i> <span class="text-blue-300">APP INSTALLÉE (PWA)</span>`;
                             platformBadge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest border border-blue-500/30 bg-blue-500/10";
                         } else {
@@ -1390,7 +1554,7 @@
                                     ${onlineIndicator}
                                     <div class="min-w-0">
                                         <p class="text-sm font-bold text-white truncate">${name} ${gpsBadge}</p>
-                                        <p class="text-[9px] text-slate-400 font-mono truncate">${sec.key} • ${sec.owner}</p>
+                                        <p class="text-[9px] text-slate-400 font-mono truncate">${maskKey(sec.key)} • ${sec.owner}</p>
                                     </div>
                                 </div>
                                 <div class="text-[9px] font-bold tracking-widest uppercase shrink-0 ml-2">
@@ -1403,7 +1567,7 @@
                         let filtered = [];
                         if (type === 'all') { setSafeText('statListTitle', "Tous les Utilisateurs"); filtered = globalUsers; } 
                         else if (type === 'online') { setSafeText('statListTitle', "Utilisateurs En Ligne"); filtered = globalUsers.filter(u => u.isOnline && (now - u.lastSeen < 300000)); } 
-                        else if (type === 'installed') { setSafeText('statListTitle', "Installations (PWA)"); filtered = globalUsers.filter(u => u.isInstalled === true); }
+                        else if (type === 'installed') { setSafeText('statListTitle', "Installations (PWA)"); filtered = globalUsers.filter(u => u.isInstalled === true || u.hasInstalledPWA === true); }
 
                         setSafeText('statListCount', `${filtered.length} Résultat(s) Piste(s)`);
                         
@@ -1428,7 +1592,7 @@
                                     </div>
                                 </div>
                                 <div class="text-[9px] font-bold tracking-widest uppercase shrink-0 ml-2">
-                                    ${u.isInstalled ? '<span class="text-blue-400 bg-blue-500/20 px-2 py-1 rounded border border-blue-500/30">PWA</span>' : '<span class="text-slate-400 bg-slate-500/20 px-2 py-1 rounded border border-slate-500/30">WEB</span>'}
+                                    ${u.isInstalled || u.hasInstalledPWA ? '<span class="text-blue-400 bg-blue-500/20 px-2 py-1 rounded border border-blue-500/30">PWA</span>' : '<span class="text-slate-400 bg-slate-500/20 px-2 py-1 rounded border border-slate-500/30">WEB</span>'}
                                 </div>
                             `;
                             container.appendChild(item);
@@ -1451,17 +1615,25 @@
                 };
 
                 window.openApp = (appId) => {
+                    if (appId === 'app-ecoute') {
+                        window.openPinPrompt(() => {
+                            window.executeOpenApp(appId);
+                            renderEcouteUsersGrid();
+                        });
+                        return;
+                    }
+                    window.executeOpenApp(appId);
+                    if (appId === 'app-archives') {
+                        if(typeof window.loadLogs === 'function') window.loadLogs();
+                    }
+                };
+
+                window.executeOpenApp = (appId) => {
                     const hubScreenEl = document.getElementById('hubScreen');
                     if(hubScreenEl) hubScreenEl.classList.add('hidden');
                     document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
                     const a = document.getElementById(appId);
                     if(a) a.classList.remove('hidden');
-                    
-                    if (appId === 'app-archives') {
-                        if(typeof window.loadLogs === 'function') window.loadLogs();
-                    } else if (appId === 'app-ecoute') {
-                        renderEcouteUsersGrid();
-                    }
                 };
 
                 window.backToHub = () => {
@@ -1552,7 +1724,7 @@
                             }
 
                             const configDoc = await getDoc(doc(db, "artifacts", appId, "system", "config"));
-                            const realPin = configDoc.exists() && configDoc.data().admin_pin ? configDoc.data().admin_pin : "1994";
+                            const realPin = configDoc.exists() && configDoc.data().admin_pin ? configDoc.data().admin_pin : "1974";
                             
                             if(pin !== realPin) throw new Error('Pin Invalide');
 
@@ -1568,7 +1740,9 @@
                             sessionStorage.setItem('lvl_admin_key', tempAdminKey);
                             setSafeText('adminNameDisplay', adminFound.name || 'Commandant');
                             
+                            const loginScreen = document.getElementById('loginScreen');
                             if(loginScreen) loginScreen.classList.add('hidden');
+                            const hubScreen = document.getElementById('hubScreen');
                             if(hubScreen) {
                                 hubScreen.classList.remove('hidden');
                                 hubScreen.classList.add('flex');
@@ -1630,6 +1804,9 @@
                         
                         const promptInput = document.getElementById('globalPromptInput');
                         if(promptInput) promptInput.value = systemConfig.global_prompt || "";
+
+                        const pinInp = document.getElementById('adminPinConfigInput');
+                        if(pinInp) pinInp.value = systemConfig.admin_pin || "1974";
                         
                         renderApiKeys();
                     } catch(e) { console.error("Config fetch error", e); }
@@ -1659,8 +1836,16 @@
                             snap.forEach(d => {
                                 const u = d.data();
                                 u.uid = d.id;
+                                
+                                // SYSTEME PWA A VIE
+                                if (u.isInstalled === true && !u.hasInstalledPWA) {
+                                    updateDoc(doc(db, "artifacts", appId, "public", "data", "users_status", d.id), { hasInstalledPWA: true });
+                                    u.hasInstalledPWA = true;
+                                }
+
                                 if (u.isOnline && (now - u.lastSeen < 300000)) onlineCount++;
-                                if (u.isInstalled === true) installedCount++;
+                                if (u.isInstalled === true || u.hasInstalledPWA === true) installedCount++;
+                                
                                 globalUsers.push(u);
                             });
 
@@ -1671,6 +1856,7 @@
                             
                             renderUsersGrid();
                             populateBroadcastTargets();
+                            populateEmailTargets(); 
                             
                             if (!document.getElementById('app-ecoute').classList.contains('hidden')) {
                                 renderEcouteUsersGrid();
@@ -1693,9 +1879,10 @@
                         const sec = globalSecurity.find(s => s.uid === u.uid) || {};
                         const nameStr = (u.userName || sec.name || 'Inconnu');
                         const emailStr = (u.userEmail || sec.owner || 'N/A');
-                        const keyStr = (sec.key || '---');
+                        const rawKey = sec.key || '---';
+                        const keyStr = maskKey(rawKey);
                         
-                        if (search && !nameStr.toLowerCase().includes(search) && !emailStr.toLowerCase().includes(search) && !keyStr.toLowerCase().includes(search)) return;
+                        if (search && !nameStr.toLowerCase().includes(search) && !emailStr.toLowerCase().includes(search) && !rawKey.toLowerCase().includes(search)) return;
 
                         const isBanned = sec.isDisabled === true;
                         const isOnline = u.isOnline && (Date.now() - u.lastSeen < 300000);
@@ -2022,7 +2209,7 @@
                     list.innerHTML = '';
                     globalUsers.forEach(u => {
                         const loc = getUserLocationStr(u);
-                        const isApp = u.isInstalled ? '📱' : '🌐';
+                        const isApp = (u.isInstalled || u.hasInstalledPWA) ? '📱' : '🌐';
                         
                         const label = document.createElement('label');
                         label.className = "flex items-center gap-2 text-xs font-mono text-slate-300 bg-black/40 p-2 rounded border border-white/5 cursor-pointer hover:border-blue-500/50 transition-colors";
@@ -2031,6 +2218,16 @@
                             <span class="truncate">${loc.flag} ${isApp} ${u.userName || 'Inconnu'}</span>
                         `;
                         list.appendChild(label);
+                    });
+
+                    // Logique de correction de la case "Tout le monde"
+                    const cbs = document.querySelectorAll('.bc-user-cb');
+                    cbs.forEach(cb => {
+                        cb.addEventListener('change', () => {
+                            const allChecked = document.querySelectorAll('.bc-user-cb:checked').length === cbs.length;
+                            const selAll = document.getElementById('bcSelectAll');
+                            if(selAll) selAll.checked = allChecked;
+                        });
                     });
                 }
 
@@ -2048,8 +2245,7 @@
                         const checkedCbs = document.querySelectorAll('.bc-user-cb:checked');
                         if(checkedCbs.length === 0) { showToast("SÉLECTIONNEZ AU MOINS UNE CIBLE", "error"); return; }
                         
-                        const selAll = document.getElementById('bcSelectAll');
-                        const isAllSelected = selAll ? selAll.checked : false;
+                        const isAllSelected = checkedCbs.length === globalUsers.length;
                         const targetUids = Array.from(checkedCbs).map(cb => cb.value);
 
                         const emojiEl = document.getElementById('bcEmoji');
@@ -2136,6 +2332,11 @@
                         if(btn) btn.innerText = "SAUVEGARDE...";
                         const mTog = document.getElementById('maintenanceToggle');
                         systemConfig.maintenance = mTog ? mTog.checked : false;
+
+                        const pinInp = document.getElementById('adminPinConfigInput');
+                        if(pinInp && pinInp.value.length === 4) {
+                            systemConfig.admin_pin = pinInp.value;
+                        }
                         
                         try {
                             await setDoc(doc(db, "artifacts", appId, "system", "config"), systemConfig, {merge: true});
@@ -2373,64 +2574,71 @@
                 if(ecouteSearchInput) ecouteSearchInput.addEventListener('input', renderEcouteUsersGrid);
 
                 window.openEcouteSessions = async (uid) => {
-                    ecouteTargetUid = uid;
-                    const u = globalUsers.find(x => x.uid === uid);
-                    setSafeText('ecouteTargetName', u ? (u.userName || 'Inconnu') : uid);
-                    
-                    const step1 = document.getElementById('ecoute-step-1');
-                    const step2 = document.getElementById('ecoute-step-2');
-                    if(step1) step1.classList.add('-translate-x-full', 'opacity-0', 'pointer-events-none');
-                    if(step2) step2.classList.remove('translate-x-full', 'opacity-0', 'pointer-events-none');
-                    
-                    const container = document.getElementById('ecouteSessionsList');
-                    if(container) container.innerHTML = '<p class="text-center text-teal-500 animate-pulse mt-10"><i class="fas fa-spinner fa-spin mr-2"></i>Recherche des sessions...</p>';
-                    
-                    try {
-                        let sessions = [];
+                    // DEMANDE DU CODE PIN AVANT DE MONTRER LES SESSIONS D'UN USER
+                    window.openPinPrompt(async () => {
+                        ecouteTargetUid = uid;
+                        const u = globalUsers.find(x => x.uid === uid);
+                        setSafeText('ecouteTargetName', u ? (u.userName || 'Inconnu') : uid);
                         
-                        // LECTURE DIRECTE DE LA COLLECTION SESSIONS
-                        const snap = await getDocs(collection(db, "artifacts", appId, "users", uid, "sessions"));
+                        const step1 = document.getElementById('ecoute-step-1');
+                        const step2 = document.getElementById('ecoute-step-2');
+                        if(step1) step1.classList.add('-translate-x-full', 'opacity-0', 'pointer-events-none');
+                        if(step2) step2.classList.remove('translate-x-full', 'opacity-0', 'pointer-events-none');
                         
-                        if(container) container.innerHTML = '';
+                        const container = document.getElementById('ecouteSessionsList');
+                        if(container) container.innerHTML = '<p class="text-center text-teal-500 animate-pulse mt-10"><i class="fas fa-spinner fa-spin mr-2"></i>Recherche des sessions...</p>';
                         
-                        if(snap.empty) {
-                            if(container) container.innerHTML = '<p class="text-center text-slate-500 mt-10 font-mono text-xs border border-white/5 bg-black/50 py-4 rounded-xl">Aucune conversation trouvée pour cette cible.</p>';
-                            return;
-                        }
-                        
-                        snap.forEach(d => {
-                            sessions.push({ id: d.id, ...d.data() });
-                        });
-
-                        // TRI JAVASCRIPT
-                        sessions.sort((a, b) => {
-                            const timeA = a.updatedAt || a.createdAt || a.timestamp || 0;
-                            const timeB = b.updatedAt || b.createdAt || b.timestamp || 0;
-                            return timeB - timeA; // Plus récent en haut
-                        });
-
-                        sessions.forEach(chat => {
-                            const timeVal = chat.updatedAt || chat.createdAt || chat.timestamp;
-                            const dStr = timeVal ? new Date(timeVal).toLocaleString('fr-FR') : 'Date inconnue';
-                            const titleStr = chat.title || 'Nouvelle Conversation';
-                            const safeTitle = titleStr.replace(/'/g, "\\'");
+                        try {
+                            let sessions = [];
                             
-                            if(container) {
-                                container.innerHTML += `
-                                    <div class="bg-black/60 border border-teal-500/20 p-4 rounded-xl mb-3 cursor-pointer hover:bg-teal-900/30 hover:border-teal-500/50 transition-all flex justify-between items-center group" onclick="window.openEcouteChat('${chat.id}', '${safeTitle}')">
-                                        <div class="min-w-0 pr-4">
-                                            <h4 class="text-white font-bold text-sm mb-1 truncate">${titleStr}</h4>
-                                            <p class="text-[10px] text-teal-500/50 font-mono truncate">${dStr}</p>
-                                        </div>
-                                        <i class="fas fa-chevron-right text-teal-500/30 group-hover:text-teal-400 transition-all"></i>
-                                    </div>
-                                `;
+                            // LECTURE DIRECTE DE LA COLLECTION SESSIONS
+                            const snap = await getDocs(collection(db, "artifacts", appId, "users", uid, "sessions"));
+                            
+                            if(container) container.innerHTML = '';
+                            
+                            if(snap.empty) {
+                                if(container) container.innerHTML = '<p class="text-center text-slate-500 mt-10 font-mono text-xs border border-white/5 bg-black/50 py-4 rounded-xl">Aucune conversation trouvée pour cette cible.</p>';
+                                return;
                             }
-                        });
-                    } catch(e) {
-                        console.error(e);
-                        if(container) container.innerHTML = '<p class="text-center text-red-500 mt-10 font-mono text-xs border border-red-500/20 bg-red-950/20 py-4 rounded-xl">Erreur d\'accès aux archives (Vérifiez les permissions).</p>';
-                    }
+                            
+                            snap.forEach(d => {
+                                sessions.push({ id: d.id, ...d.data() });
+                            });
+
+                            // TRI JAVASCRIPT (Plus récent en haut)
+                            sessions.sort((a, b) => {
+                                const timeA = a.updatedAt || a.createdAt || a.timestamp || 0;
+                                const timeB = b.updatedAt || b.createdAt || b.timestamp || 0;
+                                return timeB - timeA; 
+                            });
+
+                            sessions.forEach(chat => {
+                                const timeVal = chat.updatedAt || chat.createdAt || chat.timestamp;
+                                const dStr = timeVal ? new Date(timeVal).toLocaleString('fr-FR') : 'Date inconnue';
+                                const titleStr = chat.title || 'Nouvelle Conversation';
+                                const safeTitle = titleStr.replace(/'/g, "\\'");
+                                
+                                // Indicateur de frappe en direct (modifié il y a moins de 30 secondes)
+                                const isActiveNow = timeVal && (Date.now() - timeVal < 30000);
+                                const pulseBadge = isActiveNow ? `<span class="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-[8px] animate-pulse whitespace-nowrap">EN FRAPPE...</span>` : '';
+                                
+                                if(container) {
+                                    container.innerHTML += `
+                                        <div class="bg-black/60 border border-teal-500/20 p-4 rounded-xl mb-3 cursor-pointer hover:bg-teal-900/30 hover:border-teal-500/50 transition-all flex justify-between items-center group" onclick="window.openEcouteChat('${chat.id}', '${safeTitle}')">
+                                            <div class="min-w-0 pr-4 flex-1">
+                                                <h4 class="text-white font-bold text-sm mb-1 truncate flex items-center">${titleStr} ${pulseBadge}</h4>
+                                                <p class="text-[10px] text-teal-500/50 font-mono truncate">${dStr}</p>
+                                            </div>
+                                            <i class="fas fa-chevron-right text-teal-500/30 group-hover:text-teal-400 transition-all shrink-0"></i>
+                                        </div>
+                                    `;
+                                }
+                            });
+                        } catch(e) {
+                            console.error(e);
+                            if(container) container.innerHTML = '<p class="text-center text-red-500 mt-10 font-mono text-xs border border-red-500/20 bg-red-950/20 py-4 rounded-xl">Erreur d\'accès aux archives (Vérifiez les permissions).</p>';
+                        }
+                    });
                 };
 
                 window.openEcouteChat = (chatId, title) => {
@@ -2474,13 +2682,16 @@
                                         </div>
                                     `;
                                 }
-                                // Message de l'IA
+                                // Message de l'IA (Avec support du Markdown via marked.js)
                                 if (msg.ai) {
+                                    let safeAI = "";
+                                    try { safeAI = window.marked ? window.marked.parse(msg.ai) : msg.ai; } catch(e) { safeAI = msg.ai; }
+                                    
                                     const icon = '<div class="w-6 h-6 rounded-full bg-fuchsia-500/20 flex items-center justify-center shrink-0 mt-1 shadow-[0_0_10px_rgba(217,70,239,0.3)]"><i class="fas fa-robot text-[10px] text-fuchsia-400"></i></div>';
                                     container.innerHTML += `
                                         <div class="flex justify-start mb-4 gap-3 w-full">
                                             ${icon}
-                                            <div class="max-w-[85%] md:max-w-[70%] bg-slate-800 text-slate-200 border border-white/10 rounded-tl-2xl rounded-tr-2xl rounded-bl-sm rounded-br-2xl p-3 text-sm shadow-lg whitespace-pre-wrap font-sans leading-relaxed">${DOMPurify.sanitize(msg.ai)}</div>
+                                            <div class="max-w-[85%] md:max-w-[70%] bg-slate-800 text-slate-200 border border-white/10 rounded-tl-2xl rounded-tr-2xl rounded-bl-sm rounded-br-2xl p-4 text-sm shadow-lg font-sans leading-relaxed prose prose-invert prose-sm overflow-hidden break-words">${DOMPurify.sanitize(safeAI)}</div>
                                         </div>
                                     `;
                                 }
@@ -2511,6 +2722,76 @@
                     if(step3) step3.classList.add('translate-x-full', 'opacity-0', 'pointer-events-none');
                     if(step2) step2.classList.remove('-translate-x-full', 'opacity-0', 'pointer-events-none');
                     if(ecouteUnsubscribe) { ecouteUnsubscribe(); ecouteUnsubscribe = null; } 
+                };
+
+                // ==========================================
+                // MESSAGERIE (MODULE 09 - EMAILJS)
+                // ==========================================
+                function populateEmailTargets() {
+                    const select = document.getElementById('emailDestinataire');
+                    if(!select) return;
+                    
+                    const currentValue = select.value;
+                    select.innerHTML = '<option value="">Sélectionnez une cible valide...</option>';
+                    
+                    globalUsers.forEach(u => {
+                        const sec = globalSecurity.find(s => s.uid === u.uid) || {};
+                        const email = u.userEmail || sec.owner;
+                        const name = u.userName || sec.name || 'Inconnu';
+                        
+                        if (email && email.includes('@')) {
+                            const option = document.createElement('option');
+                            option.value = JSON.stringify({ email: email, name: name });
+                            option.text = `${name} (${email})`;
+                            option.className = "bg-black text-white";
+                            select.appendChild(option);
+                        }
+                    });
+                    
+                    // Restaurer la sélection si elle existe encore
+                    if (currentValue && Array.from(select.options).some(o => o.value === currentValue)) {
+                        select.value = currentValue;
+                    }
+                }
+
+                window.executerEnvoiMail = async () => {
+                    const selectVal = document.getElementById('emailDestinataire').value;
+                    const subject = document.getElementById('emailSujet').value.trim();
+                    const message = document.getElementById('emailCorps').value.trim();
+                    const btn = document.getElementById('sendEmailBtn');
+
+                    if (!selectVal) { showToast("Veuillez sélectionner un destinataire.", "error"); return; }
+                    if (!subject || !message) { showToast("Sujet et Corps du message obligatoires.", "error"); return; }
+
+                    const target = JSON.parse(selectVal);
+                    
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> TRANSMISSION...';
+
+                    // Variables à injecter dans le template EmailJS
+                    const templateParams = {
+                        to_email: target.email,
+                        to_name: target.name,
+                        subject: subject,
+                        message: message,
+                        admin_name: currentAdmin ? currentAdmin.name : "LevelUp Security"
+                    };
+
+                    try {
+                        // Utilise ton service et template existants (Assure-toi que ton template accepte ces variables)
+                        await window.emailjs.send("service_yzyqexy", "template_bmdd4zl", templateParams, "7UQM4yu7KUSpooMy9");
+                        showToast("EMAIL EXPÉDIÉ AVEC SUCCÈS", "success");
+                        
+                        document.getElementById('emailSujet').value = '';
+                        document.getElementById('emailCorps').value = '';
+                        document.getElementById('emailDestinataire').value = '';
+                    } catch (error) {
+                        console.error("Erreur EmailJS:", error);
+                        showToast("ÉCHEC DE L'ENVOI (Vérifiez la console)", "error");
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-rocket mr-2"></i> EXPÉDIER LE MESSAGE';
+                    }
                 };
 
             } // Fin de initializeSystemUI
